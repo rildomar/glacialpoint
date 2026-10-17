@@ -92,7 +92,7 @@ test('conexão Elgin limpa credenciais e controla só o que o aparelho anuncia',
   await page.screenshot({ path: 'artifacts/elgin-live-test.png' });
 
   await page.getByRole('button', { name: 'Abrir configurações' }).click();
-  await page.getByRole('button', { name: 'Desconectar conta' }).click();
+  await page.getByRole('button', { name: 'Desconectar Elgin' }).click();
   await expect(page.getByLabel('Access ID', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Access Secret', { exact: true })).toHaveValue('');
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('elgin-ui-secret-0001');

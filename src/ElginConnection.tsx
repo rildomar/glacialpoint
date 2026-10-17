@@ -32,7 +32,7 @@ export default function ElginConnection({ snapshot, onConnected }: { snapshot: E
     <div className="integration-row"><span className="provider-logo elgin-logo">e</span><div><strong>Elgin Smart</strong><span>{snapshot.connected ? `${snapshot.devices.length} aparelho(s) · Tuya Cloud` : 'Conecte seu projeto Tuya Cloud'}</span></div></div>
     {!elgin ? <p className="settings-footnote">Abra a versão desktop para conectar sua conta. Esta página é uma demonstração.</p> : snapshot.connected ? <>
       <p className="settings-footnote">Credenciais protegidas pelo Windows. Sua conta Tuya será reconectada ao abrir o aplicativo.</p>
-      <button className="lg-button" onClick={() => run(() => elgin.disconnect())}>Desconectar conta</button>
+      <button className="lg-button" onClick={() => run(() => elgin.disconnect())}>Desconectar Elgin</button>
     </> : <form onSubmit={submit}>
       <p className="settings-footnote">Informe as credenciais do projeto Tuya Cloud vinculado ao aplicativo Smart Life. O controle passa pela nuvem — o ar-condicionado não precisa estar na mesma rede.</p>
       <label className="lg-token-label" htmlFor="elgin-access-id">Access ID</label>
