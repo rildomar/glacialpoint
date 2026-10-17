@@ -4,7 +4,7 @@ Seu clima, no ponto. Aplicativo desktop independente para controle de ar-condici
 
 ## Estado atual
 
-A versão desktop implementa a conexão LG ThinQ para contas do Brasil: token pessoal, descoberta de ar-condicionados, perfil, estado e comandos conforme os recursos do aparelho. A integração foi validada com fixtures e testes locais; a confirmação em hardware real ainda depende da conexão do usuário. O navegador continua sendo uma demonstração sem acesso a credenciais. Elgin é uma integração planejada.
+A versão desktop implementa a conexão LG ThinQ para contas do Brasil: token pessoal, descoberta de ar-condicionados, perfil, estado e comandos conforme os recursos do aparelho. A integração foi validada com fixtures e testes locais; a confirmação em hardware real ainda depende da conexão do usuário. O navegador continua sendo uma demonstração sem acesso a credenciais. Elgin (via Tuya Cloud) tem o adaptador de núcleo implementado e validado em leitura contra a API real; a interface e a validação de comando pelo aplicativo são o próximo passo.
 
 O projeto usa Electron + React + TypeScript + Vite + Tailwind. O processo desktop é separado da interface por um preload com API limitada. Efeitos de vidro da prévia são CSS sobre uma paisagem gerada em CSS; desfoque do desktop e materiais nativos ainda precisam ser implementados e verificados. A aparência não é uma implementação nativa de Liquid Glass.
 
@@ -63,7 +63,7 @@ O teste desktop executa o Electron com os arquivos compilados e verifica o bridg
 
 - `src/`: interface e contrato inicial de aparelho; dados simulados explicitamente identificados.
 - `electron/`: processo desktop, bandeja, janela e preload isolado.
-- `electron/core/`: integrações e regras independentes da interface; cliente LG, validação de comandos e ciclo de sessão.
+- `electron/core/`: integrações e regras independentes da interface; clientes LG e Elgin (Tuya), validação de comandos e ciclo de sessão.
 - `shared/`: contratos TypeScript compartilhados entre a interface e o processo desktop.
 - `assets/`: ícones originais do GlacialPoint.
 - `tests/`: cenários de interação do protótipo.

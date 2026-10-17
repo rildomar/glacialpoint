@@ -2,8 +2,9 @@ import { app, BrowserWindow, ipcMain, Menu, nativeImage, powerMonitor, screen, s
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { listIntegrations } from './core/integrations';
+import { ElginSession } from './core/elgin-session';
 import { LGSession } from './core/lg-session';
-import { credentialStore } from './credential-store';
+import { credentialStore, elginCredentialStore } from './credential-store';
 import { tariffStore } from './tariff-store';
 
 const isDev = !app.isPackaged && process.argv.includes('--dev');
@@ -16,6 +17,7 @@ let tray: Tray | null = null;
 let quitting = false;
 let blurTimer: ReturnType<typeof setTimeout> | undefined;
 let lg: LGSession;
+let elgin: ElginSession;
 
 function clearBlurTimer() {
   clearTimeout(blurTimer);
@@ -67,8 +69,8 @@ function createPanel() {
     blurTimer = setTimeout(() => panel?.hide(), 150);
   });
   panel.on('focus', clearBlurTimer);
-  panel.on('show', () => lg.setVisible(true));
-  panel.on('hide', () => lg.setVisible(false));
+  panel.on('show', () => { lg.setVisible(true); elgin.setVisible(true); });
+  panel.on('hide', () => { lg.setVisible(false); elgin.setVisible(false); });
   panel.once('ready-to-show', showPanel);
   void panel.loadURL(applicationUrl).catch(error => {
     console.error('Failed to load the GlacialPoint interface:', error.message);
@@ -103,7 +105,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', showPanel);
   app.on('activate', showPanel);
-  app.on('before-quit', () => { quitting = true; clearBlurTimer(); lg?.dispose(); tray?.destroy(); });
+  app.on('before-quit', () => { quitting = true; clearBlurTimer(); lg?.dispose(); elgin?.dispose(); tray?.destroy(); });
   app.on('window-all-closed', () => { /* Keep the tray application running. */ });
   app.whenReady().then(() => {
     app.setAppUserModelId('com.rildomar.glacialpoint');
@@ -118,6 +120,9 @@ if (!app.requestSingleInstanceLock()) {
     lg = new LGSession(credentialStore(app.getPath('userData')), snapshot => {
       if (panel && !panel.isDestroyed()) panel.webContents.send('lg:changed', snapshot);
     });
+    elgin = new ElginSession(elginCredentialStore(app.getPath('userData')), snapshot => {
+      if (panel && !panel.isDestroyed()) panel.webContents.send('elgin:changed', snapshot);
+    });
     ipcMain.handle('integrations:list', event => { trusted(event); return listIntegrations(); });
     ipcMain.handle('lg:snapshot', event => { trusted(event); return lg.get(); });
     const tariffs = tariffStore(app.getPath('userData'));
@@ -130,10 +135,17 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('lg:refresh', event => { trusted(event); return lg.refresh(); });
     ipcMain.handle('lg:command', (event, id: unknown, command: unknown) => { trusted(event); return lg.command(id, command); });
     ipcMain.handle('lg:token-page', event => { trusted(event); return shell.openExternal('https://connect-pat.lgthinq.com/'); });
-    powerMonitor.on('suspend', () => lg.suspend());
-    powerMonitor.on('resume', () => lg.resume());
+    ipcMain.handle('elgin:snapshot', event => { trusted(event); return elgin.get(); });
+    ipcMain.handle('elgin:connect', (event, project: unknown) => { trusted(event); return elgin.connect(project); });
+    ipcMain.handle('elgin:disconnect', event => { trusted(event); return elgin.disconnect(); });
+    ipcMain.handle('elgin:select', (event, id: unknown) => { trusted(event); return elgin.select(id); });
+    ipcMain.handle('elgin:refresh', event => { trusted(event); return elgin.refresh(); });
+    ipcMain.handle('elgin:command', (event, id: unknown, command: unknown) => { trusted(event); return elgin.command(id, command); });
+    powerMonitor.on('suspend', () => { lg.suspend(); elgin.suspend(); });
+    powerMonitor.on('resume', () => { lg.resume(); elgin.resume(); });
     createTray();
     createPanel();
     void lg.restore();
+    void elgin.restore();
   }).catch(error => { console.error(error); app.exit(1); });
 }

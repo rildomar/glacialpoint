@@ -18,7 +18,8 @@
     "test:desktop": "node scripts/test-electron.mjs",
     "test:e2e": "playwright test",
     "preview:capture": "node scripts/capture-preview.mjs",
-    "test:lg": "node scripts/test-lg.mjs"
+    "test:lg": "node scripts/test-lg.mjs",
+    "test:elgin": "node scripts/test-elgin.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

@@ -1,0 +1,41 @@
+{
+  "devices": [
+    {
+      "category": "kt",
+      "id": "synthetic-ac-0001",
+      "name": "Ar da sala ",
+      "online": true,
+      "product_id": "syntheticproduct01",
+      "product_name": "Wi-Fi air conditioner",
+      "status": [
+        { "code": "switch", "value": true },
+        { "code": "temp_set", "value": 240 },
+        { "code": "temp_current", "value": 250 },
+        { "code": "mode", "value": "cold" },
+        { "code": "mode_eco", "value": false },
+        { "code": "heat", "value": false },
+        { "code": "light", "value": true },
+        { "code": "lock", "value": false },
+        { "code": "power_consumption", "value": 0 },
+        { "code": "switch_horizontal", "value": false },
+        { "code": "gear_horizontal", "value": "right" },
+        { "code": "sleep", "value": false },
+        { "code": "health", "value": false }
+      ]
+    },
+    {
+      "category": "dd",
+      "id": "synthetic-light-01",
+      "name": "Fita de teste",
+      "online": true,
+      "product_id": "syntheticproduct02",
+      "product_name": "WIFI灯带",
+      "status": [
+        { "code": "switch_led", "value": true }
+      ]
+    }
+  ],
+  "has_more": false,
+  "last_row_key": "SYNTHETICROWKEY0000000000000000000",
+  "total": 2
+}

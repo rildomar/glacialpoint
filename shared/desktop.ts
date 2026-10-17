@@ -19,5 +19,15 @@ export interface DesktopBridge {
     openTokenPage(): Promise<void>;
     subscribe(listener: (snapshot: LGSnapshot) => void): () => void;
   };
+  elgin: {
+    snapshot(): Promise<ElginSnapshot>;
+    connect(project: ElginProject): Promise<ElginSnapshot>;
+    disconnect(): Promise<ElginSnapshot>;
+    select(id: string): Promise<ElginSnapshot>;
+    refresh(): Promise<ElginSnapshot>;
+    command(id: string, command: ElginCommand): Promise<ElginSnapshot>;
+    subscribe(listener: (snapshot: ElginSnapshot) => void): () => void;
+  };
 }
+import type { ElginCommand, ElginProject, ElginSnapshot } from './elgin';
 import type { LGCommand, LGSnapshot } from './lg';

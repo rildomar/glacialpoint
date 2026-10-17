@@ -1,0 +1,32 @@
+{
+  "category": "kt",
+  "functions": [
+    { "code": "switch", "dp_id": 1, "type": "Boolean", "values": "{}" },
+    { "code": "temp_set", "dp_id": 2, "type": "Integer", "values": "{\"unit\":\"℃/F\",\"min\":160,\"max\":900,\"scale\":1,\"step\":10}" },
+    { "code": "mode", "dp_id": 4, "type": "Enum", "values": "{\"range\":[\"cold\",\"hot\",\"wet\",\"wind\",\"auto\"]}" },
+    { "code": "mode_eco", "dp_id": 8, "type": "Boolean", "values": "{}" },
+    { "code": "heat", "dp_id": 12, "type": "Boolean", "values": "{}" },
+    { "code": "light", "dp_id": 13, "type": "Boolean", "values": "{}" },
+    { "code": "lock", "dp_id": 14, "type": "Boolean", "values": "{}" },
+    { "code": "switch_horizontal", "dp_id": 33, "type": "Boolean", "values": "{}" },
+    { "code": "gear_horizontal", "dp_id": 34, "type": "Enum", "values": "{\"range\":[\"off\"]}" },
+    { "code": "sleep", "dp_id": 102, "type": "Boolean", "values": "{}" },
+    { "code": "health", "dp_id": 106, "type": "Boolean", "values": "{}" }
+  ],
+  "lang_config": {},
+  "status": [
+    { "code": "switch", "dp_id": 1, "type": "Boolean", "values": "{}" },
+    { "code": "temp_set", "dp_id": 2, "type": "Integer", "values": "{\"unit\":\"℃/F\",\"min\":160,\"max\":900,\"scale\":1,\"step\":10}" },
+    { "code": "temp_current", "dp_id": 3, "type": "Integer", "values": "{\"unit\":\"℃/F\",\"min\":-300,\"max\":1760,\"scale\":1,\"step\":10}" },
+    { "code": "mode", "dp_id": 4, "type": "Enum", "values": "{\"range\":[\"cold\",\"hot\",\"wet\",\"wind\",\"auto\"]}" },
+    { "code": "mode_eco", "dp_id": 8, "type": "Boolean", "values": "{}" },
+    { "code": "heat", "dp_id": 12, "type": "Boolean", "values": "{}" },
+    { "code": "light", "dp_id": 13, "type": "Boolean", "values": "{}" },
+    { "code": "lock", "dp_id": 14, "type": "Boolean", "values": "{}" },
+    { "code": "power_consumption", "dp_id": 28, "type": "Integer", "values": "{\"unit\":\"kW·h\",\"min\":0,\"max\":255,\"scale\":0,\"step\":1}" },
+    { "code": "switch_horizontal", "dp_id": 33, "type": "Boolean", "values": "{}" },
+    { "code": "gear_horizontal", "dp_id": 34, "type": "Enum", "values": "{\"range\":[\"off\"]}" },
+    { "code": "sleep", "dp_id": 102, "type": "Boolean", "values": "{}" },
+    { "code": "health", "dp_id": 106, "type": "Boolean", "values": "{}" }
+  ]
+}

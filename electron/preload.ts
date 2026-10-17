@@ -20,5 +20,18 @@ const bridge: DesktopBridge = {
       return () => ipcRenderer.removeListener('lg:changed', handler);
     },
   },
+  elgin: {
+    snapshot: () => ipcRenderer.invoke('elgin:snapshot'),
+    connect: project => ipcRenderer.invoke('elgin:connect', project),
+    disconnect: () => ipcRenderer.invoke('elgin:disconnect'),
+    select: id => ipcRenderer.invoke('elgin:select', id),
+    refresh: () => ipcRenderer.invoke('elgin:refresh'),
+    command: (id, command) => ipcRenderer.invoke('elgin:command', id, command),
+    subscribe: listener => {
+      const handler = (_event: Electron.IpcRendererEvent, snapshot: import('../shared/elgin').ElginSnapshot) => listener(snapshot);
+      ipcRenderer.on('elgin:changed', handler);
+      return () => ipcRenderer.removeListener('elgin:changed', handler);
+    },
+  },
 };
 contextBridge.exposeInMainWorld('glacialpoint', Object.freeze(bridge));

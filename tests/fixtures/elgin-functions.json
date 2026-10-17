@@ -1,0 +1,16 @@
+{
+  "category": "kt",
+  "functions": [
+    { "code": "switch", "desc": "switch", "name": "switch", "type": "Boolean", "values": "{}" },
+    { "code": "temp_set", "desc": "temp set", "name": "temp set", "type": "Integer", "values": "{\"unit\":\"℃/F\",\"min\":160,\"max\":900,\"scale\":1,\"step\":10}" },
+    { "code": "mode", "desc": "mode", "name": "mode", "type": "Enum", "values": "{\"range\":[\"cold\",\"hot\",\"wet\",\"wind\",\"auto\"]}" },
+    { "code": "mode_eco", "desc": "mode eco", "name": "mode eco", "type": "Boolean", "values": "{}" },
+    { "code": "heat", "desc": "heat", "name": "heat", "type": "Boolean", "values": "{}" },
+    { "code": "light", "desc": "light", "name": "light", "type": "Boolean", "values": "{}" },
+    { "code": "lock", "desc": "lock", "name": "lock", "type": "Boolean", "values": "{}" },
+    { "code": "switch_horizontal", "desc": "switch horizontal", "name": "switch horizontal", "type": "Boolean", "values": "{}" },
+    { "code": "gear_horizontal", "desc": "gear horizontal", "name": "gear horizontal", "type": "Enum", "values": "{\"range\":[\"off\"]}" },
+    { "code": "sleep", "desc": "sleep", "name": "sleep", "type": "Boolean", "values": "{}" },
+    { "code": "health", "desc": "health", "name": "health", "type": "Boolean", "values": "{}" }
+  ]
+}

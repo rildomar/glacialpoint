@@ -43,6 +43,8 @@ Compilar e testar em Mac, adequar menu bar, foco, posicionamento, Keychain, mate
 
 Identificar modelo exato e app/conta usados. Investigar integração documentada ou outra via tecnicamente verificável. Não assumir Tuya ou qualquer protocolo apenas pelo nome Elgin Smart. Documentar suporte e limitações antes de implementar. Adicionar adaptador com os mesmos contratos, mas capacidades e autenticação próprias.
 
+Investigação concluída em 2026-10-17 (`docs/ELGIN.md`): plataforma Tuya; caminho B (reparear no Smart Life e vincular a conta ao projeto) com leitura e controle validados ao vivo. Núcleo implementado: contratos em `shared/elgin.ts`, cliente/sessão em `electron/core/elgin-client.ts` e `elgin-session.ts`, credencial no `safeStorage` (`elgin-credential.bin`), fixtures anonimizadas e 14 testes (`npm run test:elgin`). Pendente: interface de conexão/controle do Elgin no painel e validação de comando pelo aplicativo.
+
 ## Próxima sessão
 
-Conectar a conta do usuário pelo aplicativo, conferir o aparelho encontrado e validar uma operação real pequena. Revisar a bandeja em diferentes monitores. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.
+Criar a interface do Elgin no painel (conexão por Access ID/Secret + região, seleção do aparelho e controles conforme capacidades) e validar um comando real pelo aplicativo. Revisar a bandeja em diferentes monitores. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.

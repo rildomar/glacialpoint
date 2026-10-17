@@ -1,6 +1,6 @@
 # Integração Elgin — investigação e plano
 
-Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17)**; próximo passo é o adaptador em `electron/core/`. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
+Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17); adaptador de núcleo implementado e validado em leitura contra a API real**. Falta a interface e a validação de comando pelo aplicativo. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
 
 ## Aparelho do usuário
 
@@ -75,8 +75,18 @@ Leitura (status): `switch`, `temp_set`, `temp_current`, `mode`, `mode_eco`, `hea
 
 Notas:
 
-- Sem DP de **velocidade do ventilador** e sem swing vertical na OpenAPI; o adaptador exporá apenas as capacidades acima.
+- Sem DP de **velocidade do ventilador** e sem swing vertical na OpenAPI; o adaptador expõe apenas as capacidades acima (liga/desliga, modos, temperatura, swing horizontal, eco, sono, luz e trava).
 - `temp_set`: faixa do schema é 16–90 ℃ (160–900, escala 1); testada na prática em 23–24 ℃ — os extremos do split (limite real, provavelmente 16–30 ℃) ainda não foram testados.
+
+## Adaptador no núcleo (2026-10-17)
+
+- Contratos: `shared/elgin.ts` (aparelho, capacidades, estado, comandos, snapshot) espelhando `shared/lg.ts`; `DesktopBridge.elgin` expõe snapshot, conectar, desconectar, selecionar, atualizar, comando e assinatura de mudanças.
+- Cliente: `electron/core/elgin-client.ts` — assinatura HMAC-SHA256, token renovado uma única vez em `1010`, descoberta paginada filtrando categoria `kt`, perfil a partir de `functions` + `specifications` (escala dos sensores) e estado em °C.
+- Sessão: `electron/core/elgin-session.ts` — mesmo ciclo do LG: geração/abort, credencial salva só depois da descoberta, um comando por vez, confirmação por leitura após o envio, sem repetição de POST ambíguo, polling 20 s/5 min e pausa em suspensão.
+- Credenciais: Access ID/Secret + região no `safeStorage` (`elgin-credential.bin`), sem fallback em texto puro. Nada de `local_key`/`ip` da resposta crua entra em contratos, fixtures ou logs.
+- Testes: `npm run test:elgin` (14 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
+- Validação real (somente leitura): o cliente do app rodou contra a API do projeto do usuário — 1 ar encontrado, capacidades e estado lidos corretamente (24 ℃). O envio de comando foi validado via scripts; falta validar pelo app depois da interface.
+- Pendências: interface de conexão/controle do Elgin no painel; confirmar faixa prática de temperatura e semântica de `heat`/`health`/`gear_horizontal` (não expostos).
 
 ## Limitações esperadas (a confirmar na prática)
 
@@ -90,8 +100,9 @@ Notas:
 1. ✅ **Repareamento no Smart Life** (2026-10-17): aparelho removido do Elgin Smart e cadastrado no Smart Life (reset do Wi-Fi via IONAIR 8× conforme o manual).
 2. ✅ **Vínculo da conta ao projeto Tuya IoT** (Western America) e **sonda de leitura** validada: status, funções e especificação lidos com sucesso.
 3. ✅ **Teste de controle ao vivo** (2026-10-17): ligar/desligar, modo, temperatura e luz via `POST /v1.0/iot-03/devices/{id}/commands` — efeito confirmado na API **e** no aparelho.
-4. **Adaptador** em `electron/core/` (cliente Elgin) com os mesmos contratos de `shared/`, credenciais no `safeStorage`, capacidades lidas do perfil do aparelho e fila serial de comandos como no LG.
-5. Fixtures anonimizadas para os testes.
+4. ✅ **Adaptador de núcleo** (2026-10-17): `shared/elgin.ts`, `elgin-client.ts`/`elgin-session.ts`, credencial no `safeStorage` e testes (`npm run test:elgin`) — leitura validada contra a API real.
+5. ✅ **Fixtures anonimizadas** (`tests/fixtures/elgin-*.json`).
+6. **Interface** do Elgin no painel (conexão por Access ID/Secret + região, seleção de aparelho e controles conforme capacidades) e validação de comando pelo app.
 
 ## Referências
 

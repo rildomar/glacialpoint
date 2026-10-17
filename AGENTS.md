@@ -4,7 +4,7 @@ Instruções para agentes de IA que trabalham neste repositório. Leia antes de 
 
 ## O que é
 
-App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada; Elgin será um adaptador futuro com os mesmos contratos, autenticação e capacidades próprias.
+App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada; Elgin (plataforma Tuya) tem adaptador de núcleo com os mesmos contratos e autenticação por projeto — falta a interface.
 
 ## Mapa do repositório
 
@@ -27,6 +27,7 @@ npm run desktop:dev     # Electron em dev (Vite na 1421)
 npm run desktop:start   # Electron com build compilado
 npm run test:desktop    # smoke do Electron: bridge, IPC, isolamento
 npm run test:lg         # núcleo LG (token, descoberta, comandos)
+npm run test:elgin      # núcleo Elgin (Tuya: perfil, estado, comandos, sessão)
 npm run package:win     # pasta em release/win-unpacked
 npm run dist:win        # instalador NSIS de desenvolvimento
 ```
