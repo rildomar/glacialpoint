@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ChartNoAxesColumn, Check, CircleHelp, Droplets, Fan, Leaf, Minus, Moon, Plus, Power, SlidersHorizontal, Snowflake, Sparkles, Sun, Waves, Wind, X } from 'lucide-react';
 import EnergyPanel from './EnergyPanel';
 import EnergySettings from './EnergySettings';
+import ElginConnection from './ElginConnection';
+import LiveElginPanel from './LiveElginPanel';
 import LGConnection from './LGConnection';
 import LiveLGPanel from './LiveLGPanel';
+import { emptyElgin, type ElginSnapshot } from '../shared/elgin';
 import { emptyLG, type LGSnapshot } from '../shared/lg';
 import IntegrationSuggestion from './IntegrationSuggestion';
 import { demoDevice, initialDemoState, type DeviceState, type FanSpeed, type Mode } from './domain';
@@ -27,14 +30,38 @@ export default function App() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const desktop = window.glacialpoint?.isDesktop === true;
   const [lg, setLG] = useState<LGSnapshot>(emptyLG);
+  const [elgin, setElgin] = useState<ElginSnapshot>(emptyElgin);
+  // Preferência de integração ativa; só vale quando as duas estão conectadas.
+  const [provider, setProvider] = useState<'lg' | 'elgin'>(() => {
+    try { return localStorage.getItem('glacialpoint.provider') === 'elgin' ? 'elgin' : 'lg'; } catch { return 'lg'; }
+  });
+  const chooseProvider = (value: 'lg' | 'elgin') => {
+    setProvider(value);
+    try { localStorage.setItem('glacialpoint.provider', value); } catch { /* preferência não é essencial */ }
+  };
+  const active: 'lg' | 'elgin' = provider === 'elgin'
+    ? (elgin.connected || !lg.connected ? 'elgin' : 'lg')
+    : (lg.connected || !elgin.connected ? 'lg' : 'elgin');
+  const activeConnected = active === 'lg' ? lg.connected : elgin.connected;
+  const activeBusy = active === 'lg' ? lg.busy : elgin.busy;
+  const activeNotice = active === 'lg' ? lg.notice : elgin.notice;
   useEffect(() => {
     const bridge = window.glacialpoint?.lg;
     if (!bridge) return;
-    let active = true;
+    let mounted = true;
     let received = false;
-    const unsubscribe = bridge.subscribe(value => { received = true; if (active) setLG(value); });
-    void bridge.snapshot().then(value => { if (active && !received) setLG(value); }).catch(() => { if (active) setLG(s => ({ ...s, error: 'Não foi possível iniciar a conexão LG.' })); });
-    return () => { active = false; unsubscribe(); };
+    const unsubscribe = bridge.subscribe(value => { received = true; if (mounted) setLG(value); });
+    void bridge.snapshot().then(value => { if (mounted && !received) setLG(value); }).catch(() => { if (mounted) setLG(s => ({ ...s, error: 'Não foi possível iniciar a conexão LG.' })); });
+    return () => { mounted = false; unsubscribe(); };
+  }, []);
+  useEffect(() => {
+    const bridge = window.glacialpoint?.elgin;
+    if (!bridge) return;
+    let mounted = true;
+    let received = false;
+    const unsubscribe = bridge.subscribe(value => { received = true; if (mounted) setElgin(value); });
+    void bridge.snapshot().then(value => { if (mounted && !received) setElgin(value); }).catch(() => { if (mounted) setElgin(s => ({ ...s, error: 'Não foi possível iniciar a conexão Elgin.' })); });
+    return () => { mounted = false; unsubscribe(); };
   }, []);
   const update = <K extends keyof DeviceState>(key: K, value: DeviceState[K]) => setState(s => ({ ...s, [key]: value }));
   const temperatureEnabled = state.power && (state.mode === 'cool' || state.mode === 'auto');
@@ -46,8 +73,8 @@ export default function App() {
     <main className="stage">
       {!desktop && <div className="intro"><span className="eyebrow">UM RESPIRO NO SEU DIA</span><h1>O seu clima.<br/>No seu controle.</h1><p>Um lugar tranquilo para encontrar<br/>a temperatura perfeita.</p><div className="intro-line"/><span className="intro-note">Inspirado na leveza. Feito para o seu desktop.</span></div>}
       <section className="panel" aria-label="Painel GlacialPoint">
-        <header className="panel-header" inert={desktop && lg.busy && !!lg.notice}><div className="flex items-center gap-2"><Snowflake size={19}/><span>GlacialPoint</span></div><div className="flex gap-1">{desktop && <button className="icon-button" aria-label={page === 'energy' ? 'Voltar aos controles' : 'Abrir consumo'} onClick={() => setPage(page === 'energy' ? 'control' : 'energy')}><ChartNoAxesColumn size={17}/></button>}<button className="icon-button" aria-label={light ? 'Ativar tema escuro' : 'Ativar tema claro'} onClick={() => setLight(!light)}>{light ? <Moon size={17}/> : <Sun size={17}/>}</button><button className="icon-button" aria-label={page === 'settings' ? 'Voltar aos controles' : 'Abrir configurações'} onClick={() => setPage(page === 'settings' ? 'control' : 'settings')}>{page === 'settings' ? <X size={17}/> : <SlidersHorizontal size={17}/>}</button></div></header>
-        <div className="demo-banner"><span className="demo-dot"/>{desktop ? 'LG ThinQ' : 'Demonstração'}<span>{desktop ? lg.connected ? 'Conta conectada' : 'Configure sua conta' : 'Sem conexão com aparelhos'}</span></div>
+        <header className="panel-header" inert={desktop && activeBusy && !!activeNotice}><div className="flex items-center gap-2"><Snowflake size={19}/><span>GlacialPoint</span></div><div className="flex gap-1">{desktop && (active === 'lg' || page === 'energy') && <button className="icon-button" aria-label={page === 'energy' ? 'Voltar aos controles' : 'Abrir consumo'} onClick={() => setPage(page === 'energy' ? 'control' : 'energy')}><ChartNoAxesColumn size={17}/></button>}<button className="icon-button" aria-label={light ? 'Ativar tema escuro' : 'Ativar tema claro'} onClick={() => setLight(!light)}>{light ? <Moon size={17}/> : <Sun size={17}/>}</button><button className="icon-button" aria-label={page === 'settings' ? 'Voltar aos controles' : 'Abrir configurações'} onClick={() => setPage(page === 'settings' ? 'control' : 'settings')}>{page === 'settings' ? <X size={17}/> : <SlidersHorizontal size={17}/>}</button></div></header>
+        <div className="demo-banner"><span className="demo-dot"/>{desktop ? active === 'lg' ? 'LG ThinQ' : 'Elgin Smart' : 'Demonstração'}<span>{desktop ? activeConnected ? 'Conta conectada' : 'Configure sua conta' : 'Sem conexão com aparelhos'}</span></div>
         {page === 'energy' && desktop ? <EnergyPanel key={lg.selectedId ?? 'none'} deviceId={lg.connected ? lg.selectedId : null} deviceName={lg.devices.find(d => d.id === lg.selectedId)?.name} back={() => setPage('control')} tariffSettings={() => configureTariff('energy')}/> : page === 'tariff' && desktop ? <EnergySettings back={() => setPage(tariffReturn)}/> : page === 'settings' ? <div className="settings-content">
           <button className="back-link" onClick={() => setPage('control')}><ArrowLeft size={15}/>Voltar</button>
           <h2>Do seu jeito.</h2><p className="muted settings-description">Ajustes simples para um clima melhor.</p>
@@ -57,10 +84,13 @@ export default function App() {
           <Setting label="Reduzir movimento" detail="Desativar as animações decorativas" checked={reducedMotion} onChange={() => setReducedMotion(!reducedMotion)}/>
           <h3 className="section-label mt-7!">ENERGIA</h3>{desktop && <button className="lg-button" onClick={() => configureTariff('settings')}>Configurar tarifa de energia</button>}<h3 className="section-label mt-7!">INTEGRAÇÕES</h3>
           <LGConnection snapshot={lg}/>
-          <div className="integration-row"><span className="provider-logo elgin-logo">e</span><div><strong>Elgin Smart</strong><span>Compatibilidade a investigar</span></div><span className="small-badge">Em breve</span></div>
+          <ElginConnection snapshot={elgin} onConnected={() => chooseProvider('elgin')}/>
           <IntegrationSuggestion />
           <p className="settings-footnote">As preferências de aparência duram até fechar o aplicativo.</p>
-        </div> : desktop ? <LiveLGPanel snapshot={lg} configure={() => setPage('settings')}/> : <>
+        </div> : desktop ? <>
+          {lg.connected && elgin.connected && <div className="device-tabs provider-tabs" role="group" aria-label="Integrações conectadas"><button aria-pressed={active === 'lg'} onClick={() => chooseProvider('lg')}>LG ThinQ</button><button aria-pressed={active === 'elgin'} onClick={() => chooseProvider('elgin')}>Elgin Smart</button></div>}
+          {active === 'lg' ? <LiveLGPanel snapshot={lg} configure={() => setPage('settings')}/> : <LiveElginPanel snapshot={elgin} configure={() => setPage('settings')}/>}
+        </> : <>
           <div className="device-tabs" role="group" aria-label="Aparelhos da demonstração"><button aria-pressed="true"><span className="device-led selected"/>{demoDevice.name}</button></div>
           <div className={`controls ${state.power ? 'powered' : ''}`}>
             <div className="device-heading"><div><span className="section-label">{demoDevice.room}</span><h2>{demoDevice.name}</h2></div><button className={`power-button ${state.power ? 'on' : ''}`} aria-label={state.power ? 'Desligar aparelho simulado' : 'Ligar aparelho simulado'} aria-pressed={state.power} onClick={() => update('power', !state.power)}><Power size={22}/></button></div>
@@ -73,8 +103,8 @@ export default function App() {
             <div className="ambient"><span>Ambiente <strong>26°</strong></span><span>Dados simulados</span></div>
           </div>
         </>}
-        <footer className="panel-footer"><span className="flex items-center gap-1.5"><CircleHelp size={11}/>{desktop ? 'LG ThinQ · Brasil' : 'Prévia interativa'}</span><span>GlacialPoint · 0.1</span></footer>
-        {desktop && lg.busy && lg.notice && <div className="command-overlay" role="status" aria-live="polite"><div className="command-loading"><span className="loading-ring" aria-hidden="true"/><strong>Ajustando seu clima</strong><span>{lg.notice}</span></div></div>}
+        <footer className="panel-footer"><span className="flex items-center gap-1.5"><CircleHelp size={11}/>{desktop ? active === 'lg' ? 'LG ThinQ · Brasil' : 'Elgin Smart · Tuya Cloud' : 'Prévia interativa'}</span><span>GlacialPoint · 0.1</span></footer>
+        {desktop && activeBusy && activeNotice && <div className="command-overlay" role="status" aria-live="polite"><div className="command-loading"><span className="loading-ring" aria-hidden="true"/><strong>Ajustando seu clima</strong><span>{activeNotice}</span></div></div>}
       </section>
     </main>
     {!desktop && <footer className="preview-footer"><span>UM PEQUENO CONTROLE. UM GRANDE CONFORTO.</span><span>Windows primeiro. macOS a caminho.</span></footer>}

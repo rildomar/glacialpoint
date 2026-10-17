@@ -4,6 +4,6 @@ import type { Integration } from '../../shared/desktop';
 export function listIntegrations(): Integration[] {
   return [
     { id: 'lg', name: 'LG ThinQ', availability: 'available' },
-    { id: 'elgin', name: 'Elgin Smart', availability: 'planned' },
+    { id: 'elgin', name: 'Elgin Smart', availability: 'available' },
   ];
 }

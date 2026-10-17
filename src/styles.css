@@ -214,6 +214,10 @@ select option { color: #183440; background: #f0f4f5; }
 .live-lg .lg-refresh > span { min-width: 0; overflow-wrap: anywhere; }
 .live-lg .lg-refresh > button { flex-shrink: 0; }
 .live-lg .mode-fieldset { margin-top: 14px; }
+.provider-tabs { flex-shrink: 0; }
+.live-elgin .mode-grid { grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); }
+.live-elgin .extras-grid { grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); }
+.live-elgin .mode-grid button { gap: 5px; }
 .command-overlay { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 28px; background: #07131e85; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); cursor: progress; }
 .command-loading { width: 100%; max-width: 270px; padding: 26px 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 20px; background: #203541; box-shadow: 0 12px 40px #0003; text-align: center; }
 .command-loading strong { font-size: 15px; font-weight: 500; }

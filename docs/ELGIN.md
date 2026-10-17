@@ -85,8 +85,15 @@ Notas:
 - Sessão: `electron/core/elgin-session.ts` — mesmo ciclo do LG: geração/abort, credencial salva só depois da descoberta, um comando por vez, confirmação por leitura após o envio, sem repetição de POST ambíguo, polling 20 s/5 min e pausa em suspensão.
 - Credenciais: Access ID/Secret + região no `safeStorage` (`elgin-credential.bin`), sem fallback em texto puro. Nada de `local_key`/`ip` da resposta crua entra em contratos, fixtures ou logs.
 - Testes: `npm run test:elgin` (14 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
-- Validação real (somente leitura): o cliente do app rodou contra a API do projeto do usuário — 1 ar encontrado, capacidades e estado lidos corretamente (24 ℃). O envio de comando foi validado via scripts; falta validar pelo app depois da interface.
-- Pendências: interface de conexão/controle do Elgin no painel; confirmar faixa prática de temperatura e semântica de `heat`/`health`/`gear_horizontal` (não expostos).
+- Validação real (somente leitura): o cliente do app rodou contra a API do projeto do usuário — 1 ar encontrado, capacidades e estado lidos corretamente (24 ℃). O envio de comando foi validado via scripts; a validação pelo aplicativo segue pendente.
+
+## Interface no painel (2026-10-17)
+
+- `src/ElginConnection.tsx`: conexão em Configurações por Access ID, Access Secret (campo protegido) e região. O formulário limpa o segredo no envio e não grava credenciais em `localStorage`; a sessão continua no `safeStorage` do núcleo.
+- `src/LiveElginPanel.tsx`: seleção de aparelho, energia, modos, temperatura, swing horizontal, eco, sono, luz e trava — cada controle só aparece quando a capacidade correspondente é anunciada pelo aparelho. Mesmo ciclo do LG: um comando por vez, overlay de confirmação e nenhuma atualização otimista.
+- Com as duas integrações conectadas, abas **LG ThinQ** / **Elgin Smart** alternam os painéis; a escolha é lembrada em `localStorage` (apenas o identificador da integração, sem credenciais).
+- Temperatura: o DP anuncia 16–90 ℃ porque a mesma faixa atende ao modo Fahrenheit; para o split em Celsius a interface limita o ajuste a **16–30 ℃** até a validação dos extremos no aparelho. O protocolo continua aceitando a faixa anunciada.
+- Testes: `tests/elgin-ui.spec.ts` (3 casos) cobre limpeza das credenciais, controles condicionados às capacidades, overlay, alternância LG/Elgin, persistência da escolha e a conexão com o LG já ativo. Suíte Playwright completa: 11/11.
 
 ## Limitações esperadas (a confirmar na prática)
 
@@ -102,7 +109,9 @@ Notas:
 3. ✅ **Teste de controle ao vivo** (2026-10-17): ligar/desligar, modo, temperatura e luz via `POST /v1.0/iot-03/devices/{id}/commands` — efeito confirmado na API **e** no aparelho.
 4. ✅ **Adaptador de núcleo** (2026-10-17): `shared/elgin.ts`, `elgin-client.ts`/`elgin-session.ts`, credencial no `safeStorage` e testes (`npm run test:elgin`) — leitura validada contra a API real.
 5. ✅ **Fixtures anonimizadas** (`tests/fixtures/elgin-*.json`).
-6. **Interface** do Elgin no painel (conexão por Access ID/Secret + região, seleção de aparelho e controles conforme capacidades) e validação de comando pelo app.
+6. ✅ **Interface** (2026-10-17): conexão por Access ID/Secret + região, seleção de aparelho, controles conforme capacidades, abas LG/Elgin e testes de UI.
+7. **Validação pelo aplicativo** com o aparelho real: conectar pela tela de Configurações e enviar um comando (ex.: luz ou liga/desliga), confirmando o efeito físico e a leitura de volta.
+8. Confirmar a faixa prática de temperatura (16–30 ℃ na interface) e a semântica de `heat`/`health`/`gear_horizontal` (não expostos).
 
 ## Referências
 
