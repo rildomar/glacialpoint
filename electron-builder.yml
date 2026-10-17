@@ -1,0 +1,27 @@
+appId: com.rildomar.glacialpoint
+productName: GlacialPoint
+asar: true
+# Native builds reuse the runtime installed by npm (Windows here, macOS on a Mac).
+electronDist: node_modules/electron/dist
+directories:
+  output: release
+  buildResources: assets
+files:
+  - dist/**/*
+  - dist-electron/**/*.cjs
+  - assets/icon.png
+  - licenses/**/*
+  - LICENSE
+  - THIRD_PARTY_NOTICES.md
+win:
+  icon: assets/icon.ico
+  target: nsis
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+mac:
+  icon: assets/icon.icns
+  target: dmg
+  category: public.app-category.utilities

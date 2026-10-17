@@ -1,0 +1,53 @@
+{
+    "messageId": "0GZcVqaVMV4tarFl1MDukg",
+    "timestamp": "2026-10-11T20:24:52.672593",
+    "response": {
+        "runState": {
+            "currentState": "NORMAL"
+        },
+        "airConJobMode": {
+            "currentJobMode": "COOL"
+        },
+        "powerSave": {
+            "powerSaveEnabled": false
+        },
+        "temperature": {
+            "currentTemperature": 26,
+            "targetTemperature": 18,
+            "unit": "C"
+        },
+        "temperatureInUnits": [
+            {
+                "currentTemperature": 26,
+                "targetTemperature": 18,
+                "unit": "C"
+            },
+            {
+                "currentTemperature": 78,
+                "targetTemperature": 64,
+                "unit": "F"
+            }
+        ],
+        "filterInfo": {
+            "filterLifetime": 0,
+            "usedTime": 720
+        },
+        "airFlow": {
+            "windStrength": "HIGH",
+            "windStrengthDetail": "HIGH"
+        },
+        "windDirection": {
+            "rotateUpDown": false
+        },
+        "operation": {
+            "airConOperationMode": "POWER_ON"
+        },
+        "timer": {
+            "relativeStartTimer": "UNSET",
+            "relativeStopTimer": "UNSET"
+        },
+        "sleepTimer": {
+            "relativeStopTimer": "UNSET"
+        }
+    }
+}

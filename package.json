@@ -1,0 +1,42 @@
+{
+  "name": "glacialpoint",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Seu clima, no ponto. Controle de ar-condicionado para desktop.",
+  "author": "GlacialPoint contributors",
+  "license": "MIT",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && tsc -p tsconfig.electron.json && vite build && node scripts/build-electron.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "desktop:dev": "node scripts/dev-electron.mjs",
+    "desktop:start": "npm run build && electron .",
+    "package:win": "npm run build && electron-builder --win --dir",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "test:desktop": "node scripts/test-electron.mjs",
+    "test:e2e": "playwright test",
+    "preview:capture": "node scripts/capture-preview.mjs",
+    "test:lg": "node scripts/test-lg.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.25.12",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.9.0",
+    "vite": "^6.4.0"
+  }
+}

@@ -1,0 +1,11 @@
+import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+export default function EnergySettings({ back }: { back: () => void }) {
+  const [value, setValue] = useState(''), [busy, setBusy] = useState(true), [error, setError] = useState('');
+  useEffect(() => { let active = true; void window.glacialpoint!.energySettings.read().then(settings => { if (active) setValue(settings.tariff === null ? '' : String(settings.tariff).replace('.', ',')); }).catch(() => { if (active) setError('Não foi possível ler a tarifa salva. Você pode informar e salvar novamente.'); }).finally(() => { if (active) setBusy(false); }); return () => { active = false; }; }, []);
+  return <div className="energy-content"><button className="back-link" disabled={busy} onClick={back}><ArrowLeft size={15}/>Voltar</button><span className="energy-device">CONFIGURAÇÕES</span><h2>Energia.</h2><p className="energy-subtitle">Sua tarifa, uma estimativa mais próxima.</p><form onSubmit={event => {
+    event.preventDefault(); const raw = value.trim(), tariff = raw ? Number(raw.replace(',', '.')) : null;
+    if (raw && (!/^\d+(?:[.,]\d{1,6})?$/.test(raw) || tariff === null || !Number.isFinite(tariff) || tariff > 1000)) { setError('Informe uma tarifa entre R$ 0 e R$ 1.000 por kWh, com até seis casas decimais.'); return; }
+    setBusy(true); setError(''); void window.glacialpoint!.energySettings.save(tariff).then(back).catch(() => setError('Não foi possível salvar. Tente novamente.')).finally(() => setBusy(false));
+  }}><label className="lg-token-label" htmlFor="energy-tariff">Tarifa por kWh (R$)</label><input id="energy-tariff" className="lg-input" inputMode="decimal" autoComplete="off" placeholder="Ex.: 0,95" value={value} disabled={busy} onChange={e => setValue(e.target.value)}/><p className="energy-caption">Informe sua tarifa com impostos e bandeira, se quiser incluí-los. Cobranças fixas ficam fora. Deixe vazio para não calcular custos.</p><p className="energy-caption">A tarifa atual é aplicada ao consumo exibido; não mantemos histórico de tarifas.</p>{error && <p className="lg-error" role="alert">{error}</p>}<button className="lg-button primary energy-save" disabled={busy}>{busy ? 'Aguarde…' : 'Salvar tarifa e voltar'}</button><p className="energy-caption">Salva neste computador. Não é enviada à LG.</p></form></div>;
+}
