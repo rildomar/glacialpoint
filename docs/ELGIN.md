@@ -23,7 +23,7 @@ Marco F do ROADMAP. Estado: investigação em andamento — nada implementado; s
 | Caminho | O que é | Custo/risco |
 |---|---|---|
 | **A — Vincular conta ao projeto Tuya IoT** | Criar um projeto na plataforma de desenvolvedor Tuya e usar o fluxo "Link App Account" (QR) com o app Elgin Smart. Não invasivo: o aparelho continua no app | **Testado: não completa** — o app OEM reconhece e confirma o QR, mas a autorização não chega ao console (testado em Western e Eastern America). O fluxo "Link Tuya App Account" é documentado para contas Tuya Smart/Smart Life |
-| **B — Reparear no app Smart Life** | Resetar o Wi-Fi do aparelho (com o ar ligado, tecla IONAIR 8× no controle → 2 bipes) e cadastrá-lo no Smart Life; depois vincular ao projeto Tuya IoT | Caminho documentado pela comunidade; exige acesso físico e o controle móvel sai do app Elgin Smart (um aparelho vive em uma conta por vez). **Em execução** |
+| **B — Reparear no app Smart Life** | Resetar o Wi-Fi do aparelho (com o ar ligado, tecla IONAIR 8× no controle → 2 bipes) e cadastrá-lo no Smart Life; depois vincular ao projeto Tuya IoT | Caminho documentado pela comunidade; exige acesso físico e o controle móvel sai do app Elgin Smart (um aparelho vive em uma conta por vez). **Repareamento concluído; vínculo da conta ao projeto em andamento** |
 | **C — Controle local (tinytuya)** | Falar direto com o módulo na rede local | Descartado por ora: exige estar na rede do escritório e extrair local key; não atende o controle remoto |
 
 ## Limitações esperadas (a confirmar na prática)
@@ -35,8 +35,8 @@ Marco F do ROADMAP. Estado: investigação em andamento — nada implementado; s
 
 ## Próximos passos
 
-1. Caminho B (iniciado em ida ao escritório): reinstalar o aparelho no app **Smart Life** — remover do Elgin Smart, resetar o Wi-Fi (ar ligado; tecla IONAIR 8× no controle → 2 bipes), parear em modo EZ (rede 2,4 GHz) e validar o controle no app.
-2. Vincular a conta do Smart Life a um projeto Tuya IoT: tentar primeiro **Western America** (mapeamento das contas Smart Life) e, se o aviso de datacenter aparecer, **Eastern America** (os dois projetos já existem).
+1. Caminho B — **repareamento concluído**: aparelho removido do Elgin Smart e cadastrado no **Smart Life** (reset do Wi-Fi via IONAIR 8× conforme o manual). ✅
+2. Vincular a conta do Smart Life ao projeto Tuya IoT — em andamento: tentar primeiro **Western America** (mapeamento das contas Smart Life) e, se o aviso de datacenter aparecer, **Eastern America** (os dois projetos já existem). Depois: sonda de leitura pela OpenAPI (script local, credenciais em arquivo com permissão restrita, fora do repositório).
 3. Sonda de leitura via Tuya OpenAPI (listar aparelho e ler status) — credenciais do projeto em arquivo local com permissão restrita, fora do repositório.
 4. Adaptador em `electron/core/` (cliente Elgin) com os mesmos contratos de `shared/`, credenciais no `safeStorage`, capacidades lidas do perfil do aparelho e fila serial de comandos como no LG.
 5. Fixtures anonimizadas para os testes.
