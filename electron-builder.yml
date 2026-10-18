@@ -1,8 +1,8 @@
 appId: com.rildomar.glacialpoint
 productName: GlacialPoint
 asar: true
-# Native builds reuse the runtime installed by npm (Windows here, macOS on a Mac).
-electronDist: node_modules/electron/dist
+# O runtime do Electron vem do cache do proprio electron-builder, sem depender
+# dos scripts de instalacao do npm (o node_modules pode nao ter o dist).
 directories:
   output: release
   buildResources: assets

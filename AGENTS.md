@@ -35,6 +35,8 @@ npm run dist:mac        # dmg no macOS (rodar no Mac ou no workflow de release)
 
 Release: tag `v*` igual à versão do `package.json` dispara `.github/workflows/release.yml` — Windows (NSIS + MSI) e macOS (dmg arm64/x64) publicados em GitHub Releases. Assinatura de código ainda não existe: os avisos de SmartScreen/Gatekeeper são esperados.
 
+Nota de build: o Electron 44 não baixa o binário na instalação — o download é preguiçoso, na primeira execução em dev (`npm run desktop:dev`/`desktop:start`). Num clone limpo o `node_modules/electron/dist` não existe; por isso o empacotador não usa `electronDist` e o runtime do Electron vem do cache do próprio electron-builder.
+
 Antes de commitar: `npm run build` limpo, os testes relevantes à mudança — e a validação do usuário testando a mudança no app. Nada de commit antes disso (regra do usuário).
 
 Inicie o app desktop sempre por um terminal comum do Windows. Apps empacotados (MSIX — ex.: Codex, apps da Store) virtualizam `%APPDATA%`: credenciais salvas (`lg-credential.bin`, `elgin-credential.bin`) e a tarifa vão para o contêiner do app hospedeiro e "desaparecem" em execuções normais.

@@ -35,7 +35,8 @@ jobs:
 
   macos:
     strategy:
-      # O runner atual e arm64; o rebuild do electron troca o runtime para x64.
+      # Cada arquitetura gera seu proprio dmg; uma falha nao cancela a outra.
+      fail-fast: false
       matrix:
         arch: [arm64, x64]
     runs-on: macos-latest
@@ -48,11 +49,6 @@ jobs:
       - run: npm ci
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-      - name: Preparar o runtime do Electron para x64
-        if: matrix.arch == 'x64'
-        run: npm rebuild electron
-        env:
-          npm_config_arch: x64
       - run: npm run dist:mac -- --${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
