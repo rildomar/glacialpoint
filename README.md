@@ -4,6 +4,18 @@ Seu clima, no ponto. Aplicativo desktop independente para controle de ar-condici
 
 O GlacialPoint conversa direto com as nuvens oficiais de duas linhas de ar-condicionado — **LG ThinQ** (token pessoal, região Brasil) e **Elgin Smart** (plataforma Tuya, via projeto de nuvem próprio). Não há servidor intermediário: leitura e comandos saem deste computador. Stack: Electron + React + TypeScript + Vite + Tailwind, com o processo desktop separado da interface por um preload de API limitada.
 
+<p align="center">
+  <img src="docs/media/glacialpoint-promo.gif" alt="Demonstração do GlacialPoint: mostrador de temperatura, troca de modo, tema claro e tela de consumo" width="432">
+</p>
+
+<p align="center"><a href="docs/media/glacialpoint-promo.mp4">Vídeo em alta (MP4, 26 s)</a> · <a href="https://github.com/rildomar/glacialpoint/releases/latest">Baixar a versão mais recente</a></p>
+
+| Temas escuro e claro | Consumo e custo |
+|---|---|
+| ![Painel do GlacialPoint nos temas escuro e claro](docs/media/duo.jpg) | ![Tela de consumo nos temas escuro e claro](docs/media/consumo.jpg) |
+
+Imagens e vídeo gerados a partir da prévia com **dados simulados** — nenhuma conta real aparece. Telas completas: [tema escuro](docs/media/tela-escura.jpg) · [tema claro](docs/media/tela-clara.jpg).
+
 ## Estado atual
 
 - **LG ThinQ** — conexão validada com a conta real do usuário (2026-10-17, rota do QR para contas Google); o painel lê o estado ao vivo, recebe **tempo real** pelo push da nuvem (MQTT sobre AWS IoT) e envia os controles anunciados pelo modelo. Guia completo em [`docs/LG.md`](docs/LG.md).
@@ -98,7 +110,7 @@ A tela de consumo (ícone de gráfico) segue a integração e o aparelho dos con
 - `shared/` — contratos TypeScript compartilhados entre interface e processo principal; mudança aqui atualiza os dois lados juntos.
 - `tests/` — Playwright (prévia) e testes de núcleo (node), com fixtures anonimizadas.
 - `scripts/` — build do desktop, testes de núcleo/desktop e sondas da API Tuya (`tuya-probe`, `tuya-control`, `tuya-pulsar`, `tuya-energy`).
-- `docs/` — [`LG.md`](docs/LG.md), [`ELGIN.md`](docs/ELGIN.md) e [`ROADMAP.md`](docs/ROADMAP.md).
+- `docs/` — [`LG.md`](docs/LG.md), [`ELGIN.md`](docs/ELGIN.md), [`ROADMAP.md`](docs/ROADMAP.md) e `media/` (vídeo, imagens e texto de divulgação).
 - A interface só fala com o processo principal pelo preload; credenciais nunca cruzam essa ponte. Os efeitos de vidro são CSS sobre uma paisagem gerada em CSS — não é uma implementação nativa de Liquid Glass; materiais nativos do macOS ficam para o marco E.
 
 ## Origem e licenças
