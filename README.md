@@ -42,7 +42,7 @@ Os passos completos estão no próprio aplicativo — botão **"Como conectar"**
 
 ## Rodar o projeto
 
-Requisitos: Node.js + npm (Windows para o aplicativo desktop; os testes de interface usam o Microsoft Edge instalado). Esta versão não usa Rust nem módulos nativos próprios; o Electron traz o Chromium, sem depender do WebView2 do sistema.
+Requisitos: Node.js 26+ e npm (Windows para o aplicativo desktop; os testes de interface usam o Microsoft Edge instalado). Esta versão não usa Rust nem módulos nativos próprios; o Electron traz o Chromium, sem depender do WebView2 do sistema.
 
 ```sh
 npm ci          # instalar
