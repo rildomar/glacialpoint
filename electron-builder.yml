@@ -24,14 +24,21 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
 msi:
   oneClick: false
   perMachine: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  artifactName: ${productName}-${version}.${ext}
   # Fixo para que versoes novas atualizem a instalacao em vez de duplicar.
   upgradeCode: "{1B03D6A3-6A03-4E19-94DA-67023E8ED062}"
 mac:
   icon: assets/icon.icns
   target: dmg
   category: public.app-category.utilities
+dmg:
+  # Sem espacos: o GitHub Releases normaliza espaco para ponto no nome do
+  # asset. Local usa o sufixo da arquitetura (-arm64/-x64); no CI o
+  # workflow troca por rotulos legiveis (-apple-silicon/-intel).
+  artifactName: ${productName}-${version}-${arch}.${ext}

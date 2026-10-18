@@ -38,7 +38,11 @@ jobs:
       # Cada arquitetura gera seu proprio dmg; uma falha nao cancela a outra.
       fail-fast: false
       matrix:
-        arch: [arm64, x64]
+        include:
+          - arch: arm64
+            label: apple-silicon
+          - arch: x64
+            label: intel
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +53,8 @@ jobs:
       - run: npm ci
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-      - run: npm run dist:mac -- --${{ matrix.arch }}
+      # Rotulo legivel no dmg publicado: -apple-silicon.dmg / -intel.dmg.
+      - run: npm run dist:mac -- --${{ matrix.arch }} -c.dmg.artifactName='${productName}-${version}-${{ matrix.label }}.${ext}'
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}

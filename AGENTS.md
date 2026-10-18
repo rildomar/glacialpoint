@@ -33,7 +33,7 @@ npm run dist:win        # instaladores NSIS (.exe) e MSI em release/
 npm run dist:mac        # dmg no macOS (rodar no Mac ou no workflow de release)
 ```
 
-Release: tag `v*` igual à versão do `package.json` dispara `.github/workflows/release.yml` — Windows (NSIS + MSI) e macOS (dmg arm64/x64) publicados em GitHub Releases. Assinatura de código ainda não existe: os avisos de SmartScreen/Gatekeeper são esperados. Quem publica é o job `release` do workflow (com o `GITHUB_TOKEN` do Actions); os scripts `dist:*` usam `--publish never` para o electron-builder não tentar publicar sozinho.
+Release: tag `v*` igual à versão do `package.json` dispara `.github/workflows/release.yml` — Windows (NSIS `-setup.exe` e MSI) e macOS (dmg `-apple-silicon`/`-intel`) publicados em GitHub Releases. Assinatura de código ainda não existe: os avisos de SmartScreen/Gatekeeper são esperados. Quem publica é o job `release` do workflow (com o `GITHUB_TOKEN` do Actions); os scripts `dist:*` usam `--publish never` para o electron-builder não tentar publicar sozinho.
 
 Nota de build: o Electron 44 não baixa o binário na instalação — o download é preguiçoso, na primeira execução em dev (`npm run desktop:dev`/`desktop:start`). Num clone limpo o `node_modules/electron/dist` não existe; por isso o empacotador não usa `electronDist` e o runtime do Electron vem do cache do próprio electron-builder.
 
