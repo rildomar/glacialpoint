@@ -122,9 +122,11 @@ function createTray() {
 }
 
 app.setName('GlacialPoint');
-// Isolate automated desktop tests from the user's preferences and single-instance lock.
-if (!app.isPackaged && process.env.GLACIALPOINT_TEST_USER_DATA) {
-  app.setPath('userData', process.env.GLACIALPOINT_TEST_USER_DATA);
+// Em desenvolvimento o perfil é separado (GlacialPoint-Dev): o app instalado usa GlacialPoint,
+// então dev e instalado podem rodar juntos — sem disputar cache nem a instância única.
+// Os testes automatizados continuam apontando o perfil por GLACIALPOINT_TEST_USER_DATA.
+if (!app.isPackaged) {
+  app.setPath('userData', process.env.GLACIALPOINT_TEST_USER_DATA ?? path.join(app.getPath('appData'), 'GlacialPoint-Dev'));
 }
 if (!app.requestSingleInstanceLock()) {
   app.quit();

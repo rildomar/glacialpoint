@@ -43,6 +43,8 @@ Antes de commitar: `npm run build` limpo, os testes relevantes à mudança — e
 
 Inicie o app desktop sempre por um terminal comum do Windows. Apps empacotados (MSIX — ex.: Codex, apps da Store) virtualizam `%APPDATA%`: credenciais salvas (`lg-credential.bin`, `elgin-credential.bin`) e a tarifa vão para o contêiner do app hospedeiro e "desaparecem" em execuções normais.
 
+Perfil de dados: em desenvolvimento o app usa a pasta própria `GlacialPoint-Dev`; o app instalado usa `GlacialPoint` — os dois podem rodar ao mesmo tempo (cache e trava de instância única separados). Os testes automatizados apontam o perfil por `GLACIALPOINT_TEST_USER_DATA`.
+
 ## Segurança (inegociável)
 
 - Nunca coloque token, credencial ou segredo em chat, código, teste, screenshot, log ou commit.
