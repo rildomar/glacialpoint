@@ -1,0 +1,77 @@
+# Release: uma tag v* (ex.: v0.1.0) gera os instaladores e publica em GitHub
+# Releases. Windows sai com NSIS (.exe) e MSI; macOS sai com um dmg por
+# arquitetura (Apple Silicon e Intel). Sem assinatura: o Windows mostra o
+# aviso do SmartScreen e o macOS pede para abrir com o botao direito.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            release/*.exe
+            release/*.msi
+
+  macos:
+    strategy:
+      # O runner atual e arm64; o rebuild do electron troca o runtime para x64.
+      matrix:
+        arch: [arm64, x64]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+      - name: Preparar o runtime do Electron para x64
+        if: matrix.arch == 'x64'
+        run: npm rebuild electron
+        env:
+          npm_config_arch: x64
+      - run: npm run dist:mac -- --${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: release/*.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir se a tag corresponde a versao do package.json
+        run: node -e "const v=require('./package.json').version, tag=process.env.GITHUB_REF_NAME; if (tag !== 'v'+v) { console.error('Tag '+tag+' nao corresponde a versao v'+v); process.exit(1); }"
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

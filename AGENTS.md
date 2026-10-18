@@ -29,8 +29,11 @@ npm run test:desktop    # smoke do Electron: bridge, IPC, isolamento
 npm run test:lg         # núcleo LG (token, descoberta, comandos)
 npm run test:elgin      # núcleo Elgin (Tuya: perfil, estado, comandos, sessão)
 npm run package:win     # pasta em release/win-unpacked
-npm run dist:win        # instalador NSIS de desenvolvimento
+npm run dist:win        # instaladores NSIS (.exe) e MSI em release/
+npm run dist:mac        # dmg no macOS (rodar no Mac ou no workflow de release)
 ```
+
+Release: tag `v*` igual à versão do `package.json` dispara `.github/workflows/release.yml` — Windows (NSIS + MSI) e macOS (dmg arm64/x64) publicados em GitHub Releases. Assinatura de código ainda não existe: os avisos de SmartScreen/Gatekeeper são esperados.
 
 Antes de commitar: `npm run build` limpo, os testes relevantes à mudança — e a validação do usuário testando a mudança no app. Nada de commit antes disso (regra do usuário).
 

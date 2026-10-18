@@ -15,12 +15,22 @@ files:
   - THIRD_PARTY_NOTICES.md
 win:
   icon: assets/icon.ico
-  target: nsis
+  # NSIS (.exe) e MSI: formatos de instalador para download direto.
+  target:
+    - nsis
+    - msi
   signAndEditExecutable: false
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+msi:
+  oneClick: false
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  # Fixo para que versoes novas atualizem a instalacao em vez de duplicar.
+  upgradeCode: "{1B03D6A3-6A03-4E19-94DA-67023E8ED062}"
 mac:
   icon: assets/icon.icns
   target: dmg

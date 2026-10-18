@@ -37,9 +37,13 @@ Tempo real (2026-10-18): canal de push da nuvem da LG (MQTT sobre AWS IoT, certi
 
 Identidade visual final, ícones, instalador, autostart opcional, instância única, consumo em repouso e verificação em diferentes escalas. Credenciais isoladas do Celsius. Definir atualização e assinatura para distribuição.
 
+Instaladores prontos (2026-10-18): `npm run dist:win` gera NSIS (`.exe`) e MSI (WiX, com `upgradeCode` fixo — versão nova atualiza a instalação no lugar); `npm run dist:mac` gera o dmg no Mac; uma tag `v*` publica os dois em GitHub Releases pelo workflow do repositório. Pendente: assinatura de código, autostart, instância única, consumo em repouso e verificação em diferentes escalas.
+
 ## E — macOS
 
 Compilar e testar em Mac, adequar menu bar, foco, posicionamento, Keychain, materiais nativos, suspensão e retomada. Definir assinatura/notarização. A compilação CI não substitui verificação de UX.
+
+Estado (2026-10-18): o aplicativo compila e roda no Mac, com o Elgin testado ao vivo. Falta validar o LG (conexão, tempo real e Keychain) e revisar menu bar, foco e posicionamento. O dmg está configurado (`npm run dist:mac`) e também sai no workflow de release (arm64 e x64).
 
 ## F — Elgin
 
@@ -49,7 +53,7 @@ Investigação concluída em 2026-10-17 (`docs/ELGIN.md`): plataforma Tuya; cami
 
 ## Próxima sessão
 
-Validar no macOS (marco E): compilar e rodar no Mac, com foco em bandeja/menu bar, foco, posicionamento do painel (arrasto e posição lembrada) e Keychain. Validar um comando real do Elgin pelo aplicativo (efeito físico e leitura de volta) e confirmar a faixa prática de temperatura. Validar o tempo real do LG ao vivo: mudança pelo controle remoto deve aparecer no painel em ~1 s (se o selo mostrar "tempo real indisponível", gerar token novo com as permissões de eventos/push). Revisar a bandeja em diferentes monitores no Windows. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.
+No Mac (marco E): atualizar o repositório, `npm ci` (dependências novas: `mqtt`, `@peculiar/x509`, `reflect-metadata`) e validar o LG — conexão, tempo real e Keychain; revisar bandeja/menu bar, foco e posicionamento; gerar o dmg (`npm run dist:mac`) e abrir o app por ele. Testar o instalador MSI no Windows (duplo clique) e conferir o aviso do SmartScreen. Validar um comando real do Elgin pelo aplicativo (efeito físico e leitura de volta) e confirmar a faixa prática de temperatura. Validar o tempo real do LG ao vivo: mudança pelo controle remoto deve aparecer no painel em ~1 s (se o selo mostrar "tempo real indisponível", gerar token novo com as permissões de eventos/push). Revisar a bandeja em diferentes monitores no Windows. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.
 
 ## Para depois
 

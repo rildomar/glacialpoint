@@ -9,8 +9,8 @@ O GlacialPoint conversa direto com as nuvens oficiais de duas linhas de ar-condi
 - **LG ThinQ** — conexão validada com a conta real do usuário (2026-10-17, rota do QR para contas Google); o painel lê o estado ao vivo, recebe **tempo real** pelo push da nuvem (MQTT sobre AWS IoT) e envia os controles anunciados pelo modelo. Guia completo em [`docs/LG.md`](docs/LG.md).
 - **Elgin Smart (Tuya)** — plataforma confirmada na prática (2026-10-17); adaptador de núcleo, push em tempo real, estimativa de consumo e interface (conexão, controle e tutorial) implementados e testados. Falta validar um comando pelo aplicativo com o aparelho real e confirmar a faixa prática de temperatura. Investigação completa em [`docs/ELGIN.md`](docs/ELGIN.md).
 - **Energia** — histórico LG validado ao vivo (30 dias e seis meses); estimativa do Elgin implementada (o aparelho não mede energia).
-- **macOS** — próximo marco: compilar e validar em hardware real (bandeja/menu bar, foco, posicionamento e Keychain).
-- **Distribuição Windows** — `npm run package:win` gera a pasta executável; instalador assinado é marco futuro.
+- **macOS** — o aplicativo compila e roda no Mac (Elgin validado ao vivo); faltam a validação do LG (conexão, tempo real e Keychain) e o acabamento de bandeja/menu bar, foco e posicionamento.
+- **Distribuição** — `npm run dist:win` gera instalador NSIS (`.exe`) e MSI de desenvolvimento; `npm run dist:mac` gera o dmg no macOS. Os dois saem sem assinatura (avisos do sistema no primeiro uso). Uma tag `v*` publica os instaladores em GitHub Releases pelo workflow do repositório.
 
 ## O que o aplicativo faz
 
@@ -56,8 +56,16 @@ A prévia é uma demonstração sem credenciais: aparelho LG simulado, explicita
 npm run desktop:dev     # Electron em desenvolvimento (Vite na 1421)
 npm run desktop:start   # build + Electron com a interface compilada
 npm run package:win     # pasta executável em release/win-unpacked (manter a pasta completa)
-npm run dist:win        # instalador NSIS de desenvolvimento (sem assinatura)
+npm run dist:win        # instaladores NSIS (.exe) e MSI em release/ (sem assinatura)
+npm run dist:mac        # dmg no macOS — rodar no próprio Mac (o .dmg só é criado lá)
 ```
+
+## Gerar uma release
+
+- **Windows**: `npm run dist:win` → `release/GlacialPoint Setup 0.1.0.exe` (NSIS) e `release/GlacialPoint 0.1.0.msi`.
+- **macOS**: `npm run dist:mac` no Mac → `release/GlacialPoint-0.1.0-arm64.dmg` (o `.app` vai dentro do dmg).
+- **Publicação automática**: crie a tag igual à versão do `package.json` (`v0.1.0`) e envie; o workflow `.github/workflows/release.yml` compila Windows e macOS (Apple Silicon e Intel) e anexa tudo em **Releases**. Um disparo manual (`workflow_dispatch`) só gera os artefatos do run.
+- **Sem assinatura**: o Windows mostra "Fornecedor desconhecido" (Mais informações → Executar assim mesmo) e o macOS bloqueia o primeiro clique — use botão direito → **Abrir**. Assinatura/notarização ficam para uma etapa futura.
 
 Mudanças no processo Electron/preload exigem reiniciar o `desktop:dev`. O aplicativo permite uma instância por perfil. Inicie por um terminal comum do Windows: apps empacotados (MSIX) virtualizam o `%APPDATA%` e as credenciais salvas não aparecem em execuções normais.
 

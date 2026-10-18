@@ -6,6 +6,10 @@
   "description": "Seu clima, no ponto. Controle de ar-condicionado para desktop.",
   "author": "GlacialPoint contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rildomar/glacialpoint.git"
+  },
   "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -14,7 +18,8 @@
     "desktop:dev": "node scripts/dev-electron.mjs",
     "desktop:start": "npm run build && electron .",
     "package:win": "npm run build && electron-builder --win --dir",
-    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
     "test:desktop": "node scripts/test-electron.mjs",
     "test:e2e": "playwright test",
     "preview:capture": "node scripts/capture-preview.mjs",
