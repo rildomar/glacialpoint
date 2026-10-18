@@ -74,9 +74,10 @@ npm run dist:mac        # dmg no macOS — rodar no próprio Mac (o .dmg só é 
 
 ## Gerar uma release
 
-- **Windows**: `npm run dist:win` → `release/GlacialPoint Setup 0.1.0.exe` (NSIS) e `release/GlacialPoint 0.1.0.msi`.
-- **macOS**: `npm run dist:mac` no Mac → `release/GlacialPoint-0.1.0-arm64.dmg` (o `.app` vai dentro do dmg).
-- **Publicação automática**: crie a tag igual à versão do `package.json` (`v0.1.0`) e envie; o workflow `.github/workflows/release.yml` compila Windows e macOS (Apple Silicon e Intel) e anexa tudo em **Releases**. Um disparo manual (`workflow_dispatch`) só gera os artefatos do run.
+- **Windows**: `npm run dist:win` → `release/GlacialPoint-0.1.1-setup.exe` (NSIS) e `release/GlacialPoint-0.1.1.msi`.
+- **macOS**: `npm run dist:mac` no Mac → `release/GlacialPoint-0.1.1-arm64.dmg` (o `.app` vai dentro do dmg). Na release publicada, o workflow renomeia para `-apple-silicon.dmg` e `-intel.dmg`.
+- **Publicação automática**: crie a tag igual à versão do `package.json` (`v0.1.1`) e envie; o workflow `.github/workflows/release.yml` compila Windows e macOS (Apple Silicon e Intel) e anexa tudo em **Releases**. Um disparo manual (`workflow_dispatch`) só gera os artefatos do run.
+- **Versão atual**: [v0.1.1](https://github.com/rildomar/glacialpoint/releases/latest) — `GlacialPoint-0.1.1-setup.exe`, `GlacialPoint-0.1.1.msi`, `GlacialPoint-0.1.1-apple-silicon.dmg` e `GlacialPoint-0.1.1-intel.dmg`.
 - **Sem assinatura**: o Windows mostra "Fornecedor desconhecido" (Mais informações → Executar assim mesmo) e o macOS bloqueia o primeiro clique — use botão direito → **Abrir**. Assinatura/notarização ficam para uma etapa futura.
 
 Mudanças no processo Electron/preload exigem reiniciar o `desktop:dev`. O aplicativo permite uma instância por perfil. Inicie por um terminal comum do Windows: apps empacotados (MSIX) virtualizam o `%APPDATA%` e as credenciais salvas não aparecem em execuções normais.
