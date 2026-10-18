@@ -15,6 +15,8 @@ test('real-data screen, missing readings, tariff persistence and clearing estima
   await page.getByRole('button', { name: 'Abrir consumo' }).click();
   await expect(page.getByRole('heading', { name: 'Seu consumo.' })).toBeVisible();
   await expect(page.locator('.energy-value')).toContainText('127,227');
+  await expect(page.locator('.energy-today-value')).toContainText('6,249');
+  await expect(page.locator('.energy-stats')).toContainText('Média diária');
   await page.getByRole('button', { name: '30 dias', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Consumo diário em kWh' }).getByRole('button')).toHaveCount(30);
   await expect(page.locator('.energy-bars .missing')).toHaveCount(33);

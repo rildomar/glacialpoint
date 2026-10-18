@@ -39,11 +39,15 @@ test('desktop onboarding clears the token and renders only discovered capabiliti
   await expect(page.getByRole('heading', { name: 'LG da sala' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Eco' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Secar' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Aumentar temperatura' }).click();
+  await expect(page.locator('.dial-number')).toContainText('23');
+  await expect(page.locator('.dial-ambient-value')).toContainText('26');
+  const dial = page.getByRole('slider', { name: 'Temperatura desejada' });
+  await dial.focus();
+  await page.keyboard.press('ArrowUp');
   await expect(page.getByRole('button', { name: 'Desligar aparelho' })).toBeDisabled();
   await expect(page.getByRole('status')).toContainText('Ajustando seu clima');
   await page.screenshot({ path: 'artifacts/lg-command-loading.png' });
-  await expect(page.locator('.temperature-number')).toContainText('23.5');
+  await expect(page.locator('.dial-number')).toContainText('23.5');
   await expect(page.locator('.command-overlay')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   await page.screenshot({ path: 'artifacts/lg-live-test.png' });

@@ -5,7 +5,7 @@ Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via Op
 O que o aplicativo faz hoje com o Elgin:
 
 - Controla liga/desliga, modo, temperatura, swing horizontal, eco, sono, luz e trava — apenas o que o aparelho anuncia (capacidades lidas do projeto Tuya).
-- Recebe mudanças **em tempo real** (~1 s), inclusive as feitas por fora (Smart Life ou controle físico), com o polling como rede de segurança.
+- Recebe mudanças **em tempo real** (~1 s), inclusive as feitas por fora (Smart Life ou controle físico), com o polling como rede de segurança — e abrir o painel consulta na hora quando a última leitura tem mais de 10 s.
 - **Estima o consumo** por tempo ligado (o aparelho não mede energia), com consumo médio configurável.
 - Traz o passo a passo de conexão dentro do próprio aplicativo, e o Elgin participa das abas e da tela de consumo junto do LG.
 
@@ -127,7 +127,7 @@ Notas:
 - Cliente: `electron/core/elgin-client.ts` — assinatura HMAC-SHA256, token renovado uma única vez em `1010`, descoberta paginada filtrando categoria `kt`, perfil a partir de `functions` + `specifications` (escala dos sensores) e estado em °C.
 - Sessão: `electron/core/elgin-session.ts` — mesmo ciclo do LG: geração/abort, credencial salva só depois da descoberta, um comando por vez, confirmação por leitura após o envio, sem repetição de POST ambíguo, polling 20 s/5 min e pausa em suspensão.
 - Credenciais: Access ID/Secret + região no `safeStorage` (`elgin-credential.bin`), sem fallback em texto puro. Nada de `local_key`/`ip` da resposta crua entra em contratos, fixtures ou logs.
-- Testes: `npm run test:elgin` (31 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão, push em tempo real e estimativa de consumo). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
+- Testes: `npm run test:elgin` (32 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão, push em tempo real e estimativa de consumo). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
 - Validação real (somente leitura): o cliente do app rodou contra a API do projeto do usuário — 1 ar encontrado, capacidades e estado lidos corretamente (24 ℃). O envio de comando foi validado via scripts; a validação pelo aplicativo segue pendente.
 
 ## Tempo real (push) — 2026-10-17

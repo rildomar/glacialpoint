@@ -50,38 +50,45 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .device-heading h2 { font-size: 17px; font-weight: 550; letter-spacing: -.6px; margin: 5px 0 0; }
 .power-button { width: 43px; height: 43px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--surface); }
 .power-button.on { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 20px #9be3ef18,inset 0 1px 1px #ffffff99; }
-.temperature { text-align: center; margin-top: 24px; }
-.temperature-label { font-size: 8px; letter-spacing: 1.5px; color: var(--muted); }
-.temperature-number { display: flex; justify-content: center; align-items: flex-start; line-height: 1; font-size: 84px; letter-spacing: -6px; font-weight: 250; margin: 4px 0 6px; padding-left: 18px; }
-.degree { font-size: 42px; margin-top: 9px; letter-spacing: -2px; color: var(--muted); font-weight: 200; }
+/* Mostrador de temperatura: o arco desenha a escala e também é o seletor —
+   arrastar escolhe a desejada (confirmada ao soltar o clique) e o centro
+   mostra o valor; o status fica na abertura inferior do arco. */
+.temperature-dial { position: relative; width: min(300px, 100%); margin: 12px auto 0; }
+.temperature-dial svg { display: block; width: 100%; height: auto; }
+.dial-track { fill: none; stroke: #8fb9c433; stroke-width: 6; stroke-linecap: round; }
+.dial-progress { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; transition: opacity .2s; }
+.temperature-dial.off .dial-progress { opacity: .3; }
+.dial-tick { stroke: #8fb9c43d; }
+.dial-tick-label { fill: var(--muted); font-size: 8.5px; }
+.dial-mark { fill: var(--accent); stroke: #f6fbfd; stroke-width: 2.2; }
+.temperature-dial.off .dial-mark { opacity: .6; }
+.dial-center { position: absolute; left: 0; right: 0; top: 62.5%; transform: translateY(-58%); text-align: center; pointer-events: none; }
+.dial-number { display: flex; justify-content: center; align-items: flex-start; line-height: 1; font-size: 62px; letter-spacing: -4px; font-weight: 250; }
+.dial-number .degree { font-size: 31px; margin-top: 9px; letter-spacing: -1.5px; color: var(--muted); font-weight: 200; }
+.dial-status { position: absolute; left: 50%; top: 81%; transform: translateX(-50%); white-space: nowrap; padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; background: #071e2c38; font-size: 9px; color: var(--muted); pointer-events: none; }
+.dial-status.on { color: var(--accent); border-color: #a6e4f140; background: #a6e4f114; }
+.dial-hit { position: absolute; inset: 0; z-index: 2; border-radius: 50%; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+.dial-hit:active { cursor: grabbing; }
+.temperature-dial.locked .dial-hit { cursor: not-allowed; }
+.dial-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dial-fallback { margin-top: 14px; text-align: center; }
+.dial-readout { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 2px; }
+.dial-readout-label { font-size: 8px; letter-spacing: 1.5px; color: var(--muted); }
+.dial-ambient-value { font-size: 20px; font-weight: 350; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; }
+.dial-ambient-value .degree { font-size: 12px; color: var(--muted); }
+.light .dial-track { stroke: #2543541f; }
+.light .dial-tick { stroke: #25435429; }
+.light .dial-mark { stroke: #ffffff; }
+.light .dial-status { background: #ffffff8a; }
+.light .dial-status.on { background: #24647a12; border-color: #24647a40; }
 .activity { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
-.status-dot { width: 4px; height: 4px; background: var(--faint); border-radius: 50%; }
-.status-dot.on { background: var(--accent); }
-.air-unit { margin: 24px auto 0; width: 182px; height: 61px; position: relative; }
-.unit-body { height: 34px; position: relative; z-index: 1; border-radius: 7px 7px 11px 11px; background: linear-gradient(180deg,#e9eeee,#b6c3c9 57%,#8599a5); box-shadow: inset 0 1px 2px #fff,0 8px 15px #02172342; border: 1px solid #d1dce199; }
-.unit-brand { position: absolute; top: 9px; left: 10px; font-size: 4px; letter-spacing: .8px; color: #526872; }
-.unit-led { position: absolute; right: 12px; top: 10px; height: 2px; width: 4px; background: #738692; }
-.running .unit-led { background: #78e2d7; box-shadow: 0 0 4px #9efff8; }
-.unit-slot { position: absolute; bottom: 3px; left: 10px; right: 10px; height: 4px; border-radius: 0 0 5px 5px; background: #4a647185; border-bottom: 1px solid #ecf2f078; }
-.air-lines { display: flex; justify-content: center; gap: 22px; opacity: 0; }
-.running .air-lines { opacity: 1; }
-.air-lines i { width: 1px; height: 23px; background: linear-gradient(#b1eaf750,transparent); transform-origin: top; animation: breeze 3s ease-in-out infinite alternate; }
-.air-lines i:nth-child(2n) { animation-delay: -1.5s; height: 29px; }
-@keyframes breeze { from { transform: skewX(-9deg); opacity: .4; } to { transform: skewX(9deg); opacity: 1; } }
-.temperature-control { display: flex; align-items: center; gap: 13px; margin-top: 9px; }
-.step-button { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text); display: grid; place-items: center; flex-shrink: 0; }
-input[type=range] { appearance: none; -webkit-appearance: none; width: 100%; height: 5px; border-radius: 5px; background: linear-gradient(to right,var(--accent) var(--fill),#ffffff20 var(--fill)); cursor: pointer; }
-input[type=range]::-webkit-slider-thumb { appearance: none; width: 17px; height: 17px; background: #f1fbff; border: 1px solid #d3e6ef; border-radius: 50%; box-shadow: 0 1px 6px #0005; }
-input[type=range]::-moz-range-thumb { width: 17px; height: 17px; background: #f1fbff; border: 1px solid #d3e6ef; border-radius: 50%; }
-.range-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px; margin: 6px 2px 21px; }
-.range-labels span:nth-child(2) { font-size: 8px; }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-.mode-fieldset legend { margin-bottom: 9px; }
+.mode-fieldset legend { margin-bottom: 7px; }
 .mode-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; }
 .mode-grid button { display: flex; align-items: center; flex-direction: column; gap: 7px; height: 62px; justify-content: center; border-radius: 13px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); font-size: 9px; }
 .mode-grid button.active { background: #a6e4f11c; border-color: #a6e4f140; color: var(--accent); }
 .extras-fieldset { margin-top: 14px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
-.fan-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; font-size: 11px; border-bottom: 1px solid var(--line); }
+.fan-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; font-size: 11px; border-bottom: 1px solid var(--line); }
 .fan-row svg { color: var(--muted); }
 .fan-row { flex-wrap: wrap; gap: 10px; }
 .fan-segments { display: flex; padding: 3px; gap: 2px; background: #071e2c20; border: 1px solid var(--line); border-radius: 9px; }
@@ -115,6 +122,7 @@ select option { color: #183440; background: #f0f4f5; }
 .sleep-control { gap: 3px; padding-top: 5px; }
 .sleep-control select { background: transparent; border: none; color: var(--muted); font-size: 8px; max-width: 90px; }
 .ambient { display: flex; justify-content: space-between; margin: 15px 0; font-size: 9px; color: var(--muted); }
+.ambient > span:last-child { margin-left: auto; }
 .ambient strong { color: var(--text); font-weight: 500; margin-left: 3px; }
 .settings-link { display: flex; align-items: center; width: calc(100% - 36px); gap: 8px; padding: 13px 4px; margin: 0 18px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 10px; }
 .settings-link svg:last-child { margin-left: auto; }
@@ -156,15 +164,10 @@ select option { color: #183440; background: #f0f4f5; }
 .solid.light .panel { background: #edf3f5; }
 .still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
 .panel { font-size: 12px; line-height: 1.4; }
-.controls { padding-top: 16px; }
-.temperature { margin-top: 16px; }
-.temperature-label { display: block; }
-.temperature-number { font-size: 72px; }
-.air-unit { margin-top: 16px; height: 50px; }
-.range-labels { margin-bottom: 16px; }
-.mode-grid button { height: 56px; }
-.extras-fieldset { margin-top: 12px; }
-.ambient { margin-top: 12px; margin-bottom: 12px; }
+.controls { padding-top: 12px; }
+.mode-grid button { height: 52px; }
+.extras-fieldset { margin-top: 10px; }
+.ambient { margin-top: 7px; margin-bottom: 7px; }
 .desktop { min-height: 100vh; background: transparent; }
 .desktop .landscape { display: none; }
 .desktop .stage { display: block; padding: 0; }
@@ -190,7 +193,7 @@ select option { color: #183440; background: #f0f4f5; }
 .lg-welcome > svg { margin: 0 auto 20px; }
 .lg-welcome h2 { font-size: 23px; }
 .lg-welcome p { font-size: 13px; line-height: 1.7; margin: 14px 0 24px; }
-.lg-refresh { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 10px; padding: 10px 0; }
+.lg-refresh { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 10px; padding: 8px 0; }
 .live-lg .device-tabs { flex-wrap: wrap; }
 .live-lg .device-heading h2 { overflow-wrap: anywhere; }
 .live-lg .device-heading .section-label { display: block; max-width: 220px; overflow-wrap: anywhere; }
@@ -198,7 +201,7 @@ select option { color: #183440; background: #f0f4f5; }
 .live-lg .mode-grid button { min-height: 46px; font-size: 11px; overflow-wrap: anywhere; }
 .live-lg .fan-segments { flex-wrap: wrap; }
 .live-lg .extras-grid:empty { display: none; }
-.live-lg .temperature-control { justify-content: space-between; font-size: 11px; }
+.live-lg .temperature-dial { margin-top: 4px; }
 
 /* Constrain the native window; only its content area scrolls when needed. */
 .desktop .stage { height: 100dvh; overflow: hidden; }
@@ -299,6 +302,20 @@ select option { color: #183440; background: #f0f4f5; }
 @keyframes mock-confirm { 0%,8% { opacity:0; transform:translateY(3px); } 16%,76% { opacity:1; transform:none; } 88%,100% { opacity:0; transform:translateY(3px); } }
 @keyframes mock-toggle-bg { 0%,8% { background:#8fb9c433; } 14%,90% { background:#a6e6f1; } 100% { background:#8fb9c433; } }
 @keyframes mock-toggle-knob { 0%,8% { transform:translateX(-9px); } 14%,90% { transform:none; } 100% { transform:translateX(-9px); } }
+.energy-today { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px; margin-bottom:12px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
+.light .energy-today { background:#ffffff9e; box-shadow:0 12px 30px #16394a12; }
+.energy-today-info { min-width:0; display:flex; flex-direction:column; gap:7px; }
+.energy-today-value { font-size:40px; font-weight:300; letter-spacing:-1.5px; line-height:1; font-variant-numeric:tabular-nums; }
+.energy-today-value small { font-size:13px; color:var(--muted); letter-spacing:0; }
+.energy-today-foot { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; }
+.energy-trend { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border-radius:999px; font-size:10px; background:#8fb9c41a; color:var(--muted); }
+.energy-trend.down { background:#4cc38a1f; color:#83d7ae; }
+.energy-trend.up { background:#e0a24a1f; color:#e8bd7e; }
+.light .energy-trend.down { background:#2e9e6b1c; color:#1e7a51; }
+.light .energy-trend.up { background:#c98a1f1c; color:#8a5a12; }
+.energy-today-date { font-size:10px; color:var(--muted); }
+.energy-today-icon { flex-shrink:0; display:grid; place-items:center; width:46px; height:46px; border-radius:15px; background:#f2c0781f; color:#f2c078; }
+.light .energy-today-icon { background:#eab35a2e; color:#b47612; }
 .energy-hero { padding:16px; border-radius:16px; background:var(--surface); border:1px solid var(--line); }
 .energy-detail { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:32px; font-size:10px; color:var(--muted); }
 .energy-detail strong { font-weight:500; color:var(--text); }

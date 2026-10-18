@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import profile from './fixtures/lg-profile.json';
 import stateFixture from './fixtures/lg-state.json';
-import { capabilities, commandPayload, LGClient, parseState, parseEnergy, type LGTransport } from '../electron/core/lg-client';
+import { capabilities, commandPayload, LGClient, LGError, parseState, parseEnergy, type LGTransport } from '../electron/core/lg-client';
 import { energyPeriods } from '../shared/energy';
 import { tariffStore } from '../electron/tariff-store';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -53,7 +53,9 @@ const deferred = <T>() => { let resolve!: (value: T) => void; const promise = ne
 function setup(overrides: Partial<LGTransport> = {}) {
   let saved: Credentials | null = null;
   const transport: LGTransport = { devices: async () => [device, { ...device, id: 'second' }], profile: async () => caps, state: async () => ({ ...state }), send: async () => {}, ...overrides };
-  const session = new LGSession({ read: () => saved, write: value => { saved = { ...value }; }, clear: () => { saved = null; } }, () => {}, () => transport, async () => {});
+  // Push dublê: os testes de núcleo não abrem conexão real (o push tem suíte
+  // própria em lg-push.test.ts).
+  const session = new LGSession({ read: () => saved, write: value => { saved = { ...value }; }, clear: () => { saved = null; } }, () => {}, () => transport, async () => {}, () => ({ start: () => {}, stop: () => {} }));
   return { session, saved: () => saved };
 }
 test('energy requests coalesce, cache and discard results after disconnect', async () => {
@@ -106,6 +108,40 @@ test('HTTP auth, rate limit and network errors never expose response details', a
   const client = new LGClient(token, 'id', async () => { throw new Error(token); });
   await assert.rejects(client.devices(new AbortController().signal), error => error instanceof Error && !error.message.includes(token));
 });
+test('tempo real: rota, registro, certificado e assinaturas com os cabeçalhos e o ID codificado', async () => {
+  const requests: { url: string; init: RequestInit }[] = [];
+  const client = new LGClient(token, 'test-client', (async (url, init) => {
+    requests.push({ url: String(url), init: init! });
+    const route = String(url).replace('https://api-aic.lgthinq.com/', '');
+    if (route === 'route') return Response.json({ response: { apiServer: 'x', mqttServer: 'mqtts://mqtt.example.test:8883', webSocketServer: 'y' } });
+    if (route === 'client/certificate') return Response.json({ response: { result: { certificatePem: 'CERT', subscriptions: ['app/clients/test-client/push'] } } });
+    return Response.json({ response: {} });
+  }) as typeof fetch);
+  const signal = new AbortController().signal;
+  assert.deepEqual(await client.route(signal), { host: 'mqtt.example.test', port: 8883 });
+  await client.registerMqttClient(signal);
+  assert.deepEqual(await client.issueCertificate('CSR', signal), { certificate: 'CERT', topics: ['app/clients/test-client/push'] });
+  await client.subscribe('id/with?special', 'event', signal);
+  await client.subscribe('id/with?special', 'push', signal);
+  assert.equal(requests[1].url, 'https://api-aic.lgthinq.com/client');
+  assert.equal(requests[1].init.body, JSON.stringify({ type: 'MQTT', 'service-code': 'SVC202', 'device-type': '607', allowExist: true }));
+  assert.equal(requests[3].url, 'https://api-aic.lgthinq.com/event/id%2Fwith%3Fspecial/subscribe');
+  assert.equal(requests[3].init.body, JSON.stringify({ expire: { unit: 'HOUR', timer: 4464 } }));
+  assert.equal(requests[4].url, 'https://api-aic.lgthinq.com/push/id%2Fwith%3Fspecial/subscribe');
+  assert.equal(requests[4].init.body, undefined);
+  // O cabeçalho exclusivo de controle não acompanha as assinaturas.
+  assert.equal((requests[1].init.headers as Record<string, string>)['x-conditional-control'], undefined);
+  assert.equal((requests[3].init.headers as Record<string, string>)['x-conditional-control'], undefined);
+  // Endereço sem porta devolve o padrão do MQTT seguro.
+  const plain = new LGClient(token, 'id', (async () => Response.json({ response: { mqttServer: 'mqtts://only.example' } })) as typeof fetch);
+  assert.deepEqual(await plain.route(new AbortController().signal), { host: 'only.example', port: 8883 });
+});
+test('erros da LG chegam com código e marca de autorização (o push trata o 1207)', async () => {
+  const rejected = new LGClient(token, 'id', (async () => Response.json({ error: { code: '1207', message: 'already subscribed' } }, { status: 400 })) as typeof fetch);
+  await assert.rejects(rejected.subscribe('x', 'push', new AbortController().signal), (error: unknown) => error instanceof LGError && error.code === '1207' && !error.auth);
+  const auth = new LGClient(token, 'id', (async () => Response.json({ error: { code: '1301' } })) as typeof fetch);
+  await assert.rejects(auth.devices(new AbortController().signal), (error: unknown) => error instanceof LGError && error.auth === true);
+});
 test('disconnect during discovery cannot save credentials or resurrect the session', async () => {
   const pending = deferred<typeof device[]>();
   const { session, saved } = setup({ devices: () => pending.promise });
@@ -140,5 +176,23 @@ test('disconnect during control drops the late result and clears credentials', a
   await session.connect(token); const sending = session.command(device.id, { field: 'power', value: false });
   session.disconnect(); pending.resolve(); await sending;
   assert.equal(saved(), null); assert.equal(session.get().state, null); assert.equal(session.get().connected, false);
+  session.dispose();
+});
+
+test('abrir o painel consulta na hora quando a última leitura está velha', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  let reads = 0;
+  const { session } = setup({ state: async () => { reads++; return { ...state }; } });
+  await session.connect(token);
+  assert.equal(reads, 1);
+  session.setVisible(false); session.setVisible(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 1, 'leitura recente não provoca consulta');
+  session.setVisible(false);
+  t.mock.timers.setTime(Date.now() + 60000);
+  session.setVisible(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 2, 'leitura velha consulta na hora');
+  assert.equal(session.get().busy, false);
   session.dispose();
 });

@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { energyPeriods, type EnergyReport } from '../../shared/energy';
 import { setTimeout as delay } from 'node:timers/promises';
-import { emptyLG, type LGCommand, type LGSnapshot } from '../../shared/lg';
-import { commandPayload, LGClient, LGError, matchesCommand, publicError, type LGTransport } from './lg-client';
+import { emptyLG, type LGCommand, type LGRealtime, type LGState, type LGSnapshot } from '../../shared/lg';
+import { at, bool, commandPayload, LGClient, LGError, matchesCommand, number, publicError, string, type LGTransport } from './lg-client';
+import { LGPush, type LGPushLink, type LGPushOptions, type LGPushStatus } from './lg-push';
 
 export interface Credentials { token: string; clientId: string; selectedId: string | null }
 export interface CredentialStore { read(): Credentials | null; write(value: Credentials): void; clear(): void }
+
+export type LGPushFactory = (options: LGPushOptions) => LGPushLink;
 
 export class LGSession {
   private snapshot: LGSnapshot = structuredClone(emptyLG);
@@ -16,6 +19,9 @@ export class LGSession {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private visible = true;
   private suspended = false;
+  private push: LGPushLink | null = null;
+  private pushState: LGPushStatus = 'stopped';
+  private pushedAt: number | null = null;
   private energyCache: { day: string; report: EnergyReport } | null = null;
   private energyPending: { generation: number; id: string; promise: Promise<EnergyReport> } | null = null;
   constructor(
@@ -23,6 +29,7 @@ export class LGSession {
     private readonly emit: (snapshot: LGSnapshot) => void,
     private readonly makeClient: (token: string, id: string) => LGTransport = (token, id) => new LGClient(token, id),
     private readonly settle: (signal: AbortSignal) => Promise<unknown> = signal => delay(3000, undefined, { signal }),
+    private readonly makePush: LGPushFactory = options => new LGPush(options),
   ) {}
   get() { return structuredClone(this.snapshot); }
   private publish(patch: Partial<LGSnapshot>) { this.snapshot = { ...this.snapshot, ...patch }; this.emit(this.get()); }
@@ -41,10 +48,68 @@ export class LGSession {
     this.energyPending = { generation, id, promise }; return promise;
   }
   private current(generation: number) { return generation === this.generation && !this.controller.signal.aborted; }
+  private startPush() {
+    this.stopPush();
+    if (this.suspended || !this.credentials || !this.snapshot.connected || !this.snapshot.selectedId) return;
+    const { token, clientId } = this.credentials;
+    this.push = this.makePush({
+      token, clientId, deviceId: this.snapshot.selectedId,
+      onReport: report => this.applyPush(report), onStatus: status => this.setPushStatus(status),
+    });
+    this.push.start();
+  }
+  private stopPush() {
+    const push = this.push; this.push = null;
+    if (push) push.stop();
+    this.setPushStatus('stopped');
+  }
+  private setPushStatus(status: LGPushStatus) {
+    if (this.pushState === status) return;
+    this.pushState = status;
+    const realtime: LGRealtime | null = status === 'connected' ? 'on' : status === 'blocked' ? 'blocked' : status === 'connecting' || status === 'reconnecting' ? 'connecting' : null;
+    this.publish({ realtime });
+  }
+  // Relatórios do canal de tempo real entram no estado como leitura
+  // confirmada do aparelho (nunca como alteração otimista): só os campos
+  // presentes na mensagem mudam, e uma repetição sem mudança não toca no
+  // relógio. (O Elgin aplica a mesma regra em elgin-session.ts.)
+  private applyPush(report: Record<string, unknown>) {
+    const { connected, state } = this.snapshot;
+    if (!connected || this.suspended) return;
+    this.pushedAt = Date.now(); // a nuvem falou: o canal está comprovado
+    if (!state) return;
+    const operation = at(report, 'operation', 'airConOperationMode');
+    // Se vier em Fahrenheit (conta em outra unidade), os números não entram.
+    const unit = at(report, 'temperature', 'unit');
+    const celsius = unit === undefined || unit === 'C';
+    const sleep = at(report, 'sleepTimer');
+    let sleepHours = state.sleepHours;
+    if (sleep !== undefined && sleep !== null) {
+      sleepHours = at(report, 'sleepTimer', 'relativeStopTimer') === 'UNSET' ? 0
+        : Math.ceil(((number(at(report, 'sleepTimer', 'relativeHourToStop')) ?? 0) * 60 + (number(at(report, 'sleepTimer', 'relativeMinuteToStop')) ?? 0)) / 60) || null;
+    }
+    const next: LGState = {
+      power: operation === 'POWER_ON' ? true : operation === 'POWER_OFF' ? false : state.power,
+      mode: string(at(report, 'airConJobMode', 'currentJobMode')) ?? state.mode,
+      current: celsius ? number(at(report, 'temperature', 'currentTemperature')) ?? state.current : state.current,
+      target: celsius ? number(at(report, 'temperature', 'targetTemperature')) ?? state.target : state.target,
+      fan: string(at(report, 'airFlow', 'windStrength')) ?? state.fan,
+      swing: bool(at(report, 'windDirection', 'rotateUpDown')) ?? state.swing,
+      eco: bool(at(report, 'powerSave', 'powerSaveEnabled')) ?? state.eco,
+      sleepHours,
+    };
+    if (JSON.stringify(next) === JSON.stringify(state)) return;
+    this.publish({ state: next, updatedAt: Date.now() });
+  }
   private schedule() {
     clearTimeout(this.timer);
     if (!this.snapshot.connected || this.suspended) return;
-    this.timer = setTimeout(() => void this.refresh(), this.visible && !this.snapshot.error ? 20000 : 300000);
+    // O polling vira rede de segurança (5 min) só depois que uma mensagem real
+    // chegar: se a LG não liberar o canal de tempo real, o app continua no
+    // ritmo normal de 20 s.
+    const live = this.pushState === 'connected' && this.pushedAt !== null;
+    const interval = live ? (this.snapshot.error ? 20000 : 300000) : (this.visible && !this.snapshot.error ? 20000 : 300000);
+    this.timer = setTimeout(() => void this.refresh(), interval);
     this.timer.unref();
   }
   async restore() {
@@ -58,6 +123,8 @@ export class LGSession {
       this.publish({ error: 'Cole um token pessoal LG válido, começando com thinqpat_.' }); return this.get();
     }
     const generation = this.begin();
+    this.stopPush();
+    this.pushedAt = null;
     this.credentials = null; this.client = null;
     this.publish({ ...structuredClone(emptyLG), busy: true });
     const credentials: Credentials = { token: token.trim(), clientId: saved?.clientId ?? `glacialpoint-${randomUUID()}`, selectedId: saved?.selectedId ?? null };
@@ -73,6 +140,7 @@ export class LGSession {
       this.vault.write(credentials);
       this.credentials = credentials; this.client = client;
       this.publish({ connected: true, devices, selectedId });
+      this.startPush();
       const caps = await client.profile(selectedId, signal);
       const state = await client.state(selectedId, signal);
       if (this.current(generation)) this.publish({ capabilities: caps, state, updatedAt: Date.now() });
@@ -81,7 +149,7 @@ export class LGSession {
     return this.get();
   }
   disconnect() {
-    this.begin(); this.credentials = null; this.client = null;
+    this.begin(); this.stopPush(); this.pushedAt = null; this.credentials = null; this.client = null;
     let error: string | null = null;
     try { this.vault.clear(); } catch { error = 'A sessão foi encerrada, mas não foi possível apagar a credencial do disco. Tente desconectar novamente.'; }
     this.publish({ ...structuredClone(emptyLG), error });
@@ -90,10 +158,13 @@ export class LGSession {
   async select(id: unknown) {
     if (typeof id !== 'string' || !this.snapshot.devices.some(d => d.id === id) || !this.credentials || !this.client) return this.get();
     this.begin();
+    this.stopPush();
     this.credentials.selectedId = id;
     try { this.vault.write(this.credentials); } catch { this.publish({ error: 'Não foi possível salvar a seleção do aparelho.' }); }
     this.publish({ selectedId: id, state: null, capabilities: null, busy: false, updatedAt: null });
-    return this.refresh();
+    const result = await this.refresh();
+    this.startPush();
+    return result;
   }
   async refresh() {
     if (!this.client || !this.snapshot.selectedId || this.snapshot.busy || this.suspended) return this.get();
@@ -131,8 +202,16 @@ export class LGSession {
     finally { if (this.current(generation)) { this.publish({ busy: false }); this.schedule(); } }
     return this.get();
   }
-  setVisible(value: boolean) { this.visible = value; if (!this.snapshot.busy) this.schedule(); }
-  suspend() { this.suspended = true; this.begin(); this.publish({ busy: false }); }
-  resume() { this.suspended = false; void this.refresh(); }
-  dispose() { this.begin(); }
+  // Abrir o painel mostra o estado atual: se a última leitura já passou de
+  // 10 s, consulta na hora em vez de esperar o próximo ciclo (20 s / 5 min).
+  setVisible(value: boolean) {
+    const opening = value && !this.visible;
+    this.visible = value;
+    if (this.snapshot.busy) return;
+    this.schedule();
+    if (opening && this.snapshot.connected && Date.now() - (this.snapshot.updatedAt ?? 0) > 10000) void this.refresh();
+  }
+  suspend() { this.suspended = true; this.begin(); this.stopPush(); this.publish({ busy: false }); }
+  resume() { this.suspended = false; this.startPush(); void this.refresh(); }
+  dispose() { this.stopPush(); this.begin(); }
 }

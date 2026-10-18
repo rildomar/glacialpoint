@@ -214,7 +214,16 @@ export class ElginSession {
     finally { if (this.current(generation)) { this.publish({ busy: false }); this.schedule(); } }
     return this.get();
   }
-  setVisible(value: boolean) { this.visible = value; if (!this.snapshot.busy) this.schedule(); }
+  // Abrir o painel mostra o estado atual: se a última leitura já passou de
+  // 10 s, consulta na hora em vez de esperar o próximo ciclo (que pode ser
+  // de 5 min com o canal de tempo real parado ou já comprovado).
+  setVisible(value: boolean) {
+    const opening = value && !this.visible;
+    this.visible = value;
+    if (this.snapshot.busy) return;
+    this.schedule();
+    if (opening && this.snapshot.connected && Date.now() - (this.snapshot.updatedAt ?? 0) > 10000) void this.refresh();
+  }
   suspend() { this.suspended = true; this.begin(); this.stopPush(); this.publish({ busy: false }); }
   resume() { this.suspended = false; this.startPush(); void this.refresh(); }
   dispose() { this.stopPush(); this.begin(); }

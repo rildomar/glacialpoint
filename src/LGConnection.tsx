@@ -14,7 +14,7 @@ export default function LGConnection({ snapshot, guide }: { snapshot: LGSnapshot
       <p className="settings-footnote">Token protegido pelo Windows. Sua conta será reconectada ao abrir o aplicativo.</p>
       <button className="lg-button" onClick={() => run(() => lg.disconnect())}>Desconectar conta</button>
     </> : <form onSubmit={event => { event.preventDefault(); const value = token; setToken(''); run(() => lg.connect(value)); }}>
-      <p className="settings-footnote">Gere um token pessoal com a mesma conta usada no LG ThinQ. Autorize a consulta e o controle dos seus aparelhos.</p>
+      <p className="settings-footnote">Gere um token pessoal com a mesma conta usada no LG ThinQ. Autorize a consulta, o controle e as notificações de eventos (tempo real) dos seus aparelhos.</p>
       <button type="button" className="lg-button" onClick={() => run(() => lg.openTokenPage())}>Abrir portal de tokens da LG ↗</button>
       <label className="lg-token-label" htmlFor="lg-token">Token pessoal</label>
       <input id="lg-token" className="lg-input" type="password" autoComplete="off" spellCheck={false} placeholder="thinqpat_…" value={token} disabled={snapshot.busy} onChange={event => setToken(event.target.value)}/>

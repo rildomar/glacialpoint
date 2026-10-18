@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChartNoAxesColumn, Check, CircleHelp, Droplets, Fan, Leaf, Minus, Moon, Plus, Power, SlidersHorizontal, Snowflake, Sparkles, Sun, Waves, Wind, X } from 'lucide-react';
+import { ArrowLeft, ChartNoAxesColumn, Check, CircleHelp, Droplets, Fan, Leaf, Moon, Power, SlidersHorizontal, Snowflake, Sparkles, Sun, Waves, Wind, X } from 'lucide-react';
 import ConnectionGuide from './ConnectionGuide';
 import EnergyPanel from './EnergyPanel';
 import EnergySettings from './EnergySettings';
@@ -7,6 +7,7 @@ import ElginConnection from './ElginConnection';
 import LiveElginPanel from './LiveElginPanel';
 import LGConnection from './LGConnection';
 import LiveLGPanel from './LiveLGPanel';
+import TemperatureDial from './TemperatureDial';
 import { emptyElgin, type ElginSnapshot } from '../shared/elgin';
 import { emptyLG, type LGSnapshot } from '../shared/lg';
 import IntegrationSuggestion from './IntegrationSuggestion';
@@ -101,13 +102,11 @@ export default function App() {
           <div className="device-tabs" role="group" aria-label="Aparelhos da demonstração"><button aria-pressed="true"><span className="device-led selected"/>{demoDevice.name}</button></div>
           <div className={`controls ${state.power ? 'powered' : ''}`}>
             <div className="device-heading"><div><span className="section-label">{demoDevice.room}</span><h2>{demoDevice.name}</h2></div><button className={`power-button ${state.power ? 'on' : ''}`} aria-label={state.power ? 'Desligar aparelho simulado' : 'Ligar aparelho simulado'} aria-pressed={state.power} onClick={() => update('power', !state.power)}><Power size={22}/></button></div>
-            <div className="temperature"><span className="temperature-label">TEMPERATURA DESEJADA</span><div className="temperature-number"><span>{state.target}</span><span className="degree">°</span></div><span className="activity"><span className={`status-dot ${state.power ? 'on' : ''}`}/>{state.power ? activity[state.mode] : 'Aparelho desligado'}</span></div>
-            <div className={`air-unit ${state.power ? 'running' : ''}`} aria-hidden="true"><div className="unit-body"><span className="unit-brand">GLACIALPOINT</span><span className="unit-led"/><div className="unit-slot"/></div><div className="air-lines"><i/><i/><i/><i/><i/></div></div>
-            <div className="temperature-control"><button className="step-button" disabled={!temperatureEnabled || state.target <= 18} aria-label="Diminuir temperatura" onClick={() => target(state.target - 1)}><Minus size={17}/></button><input aria-label="Temperatura desejada" type="range" min="18" max="30" step="1" disabled={!temperatureEnabled} value={state.target} onChange={e => target(Number(e.target.value))} style={{ '--fill': `${(state.target - 18) / 12 * 100}%` } as React.CSSProperties}/><button className="step-button" disabled={!temperatureEnabled || state.target >= 30} aria-label="Aumentar temperatura" onClick={() => target(state.target + 1)}><Plus size={17}/></button></div>
-            <div className="range-labels"><span>18°</span><span>{temperatureEnabled ? 'Encontre o seu ponto' : state.power ? 'Temperatura fixa neste modo' : 'Ligue para ajustar'}</span><span>30°</span></div>
+            <TemperatureDial min={demoDevice.capabilities.min} max={demoDevice.capabilities.max} step={demoDevice.capabilities.step} target={state.target} power={state.power} status={state.power ? activity[state.mode] : 'Aparelho desligado'} disabled={!temperatureEnabled} onSelect={target}/>
+            <div className="dial-readout"><span className="dial-readout-label">AMBIENTE</span><span className="dial-ambient-value">26<span className="degree">°</span></span></div>
             <fieldset disabled={!state.power} className="mode-fieldset"><legend className="section-label">MODO</legend><div className="mode-grid">{modes.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={state.mode === id} className={state.mode === id ? 'active' : ''} onClick={() => update('mode', id)}><Icon size={20}/><span>{label}</span></button>)}</div></fieldset>
             <fieldset disabled={!state.power} className="extras-fieldset"><legend className="sr-only">Controles adicionais</legend><div className="fan-row"><div className="flex items-center gap-2"><Fan size={17}/><span>Ventilação</span></div><div className="fan-segments" role="radiogroup" aria-label="Velocidade da ventilação">{Object.entries(speedLabels).map(([value, label]) => <label key={value}><input type="radio" name="fan-speed" value={value} checked={state.fan === value} onChange={() => update('fan', value as FanSpeed)}/><span>{label}</span></label>)}</div></div><div className="extras-grid"><button aria-pressed={state.swing} onClick={() => update('swing', !state.swing)}><Waves size={19}/><span>Oscilar</span><span className={`mini-indicator ${state.swing ? 'active' : ''}`}>{state.swing ? <Check size={10}/> : null}</span></button><button aria-pressed={state.eco} onClick={() => update('eco', !state.eco)}><Leaf size={19}/><span>Eco</span><span className={`mini-indicator ${state.eco ? 'active' : ''}`}>{state.eco ? <Check size={10}/> : null}</span></button><label className="sleep-control"><Moon size={19}/><span>Dormir</span><select aria-label="Temporizador de desligamento" value={state.sleepHours} onChange={e => update('sleepHours', Number(e.target.value))}><option value="0">Desativado</option>{[1,2,3,4,5,6,7].map(h => <option key={h} value={h}>{h} h</option>)}</select></label></div></fieldset>
-            <div className="ambient"><span>Ambiente <strong>26°</strong></span><span>Dados simulados</span></div>
+            <div className="ambient"><span>Dados simulados</span></div>
           </div>
         </>}
         <footer className="panel-footer"><span className="flex items-center gap-1.5"><CircleHelp size={11}/>{desktop ? active === 'lg' ? 'LG ThinQ · Brasil' : 'Elgin Smart · Tuya Cloud' : 'Prévia interativa'}</span><span>GlacialPoint · 0.1</span></footer>

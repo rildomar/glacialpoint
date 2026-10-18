@@ -140,7 +140,9 @@ const deferred = <T>() => { let resolve!: (value: T) => void; const promise = ne
 function setup(overrides: Partial<ElginTransport> = {}, initial: ElginCredentials | null = null) {
   let saved: ElginCredentials | null = initial;
   const transport: ElginTransport = { devices: async () => [device, { ...device, id: 'second' }], profile: async () => caps, state: async () => ({ ...state }), send: async () => {}, ...overrides };
-  const session = new ElginSession({ read: () => saved, write: value => { saved = { ...value }; }, clear: () => { saved = null; } }, () => {}, () => transport, async () => {});
+  // Push dublê: os testes de núcleo não abrem soquete real (o push tem suíte
+  // própria em elgin-push.test.ts).
+  const session = new ElginSession({ read: () => saved, write: value => { saved = { ...value }; }, clear: () => { saved = null; } }, () => {}, () => transport, async () => {}, () => ({ start: () => {}, stop: () => {} }));
   return { session, saved: () => saved };
 }
 
@@ -225,5 +227,23 @@ test('desconectar durante o comando descarta o resultado tardio e limpa as crede
   await session.connect(project); const sending = session.command('synthetic-ac', { field: 'power', value: false });
   session.disconnect(); pending.resolve(); await sending;
   assert.equal(saved(), null); assert.equal(session.get().state, null); assert.equal(session.get().connected, false);
+  session.dispose();
+});
+
+test('abrir o painel consulta na hora quando a última leitura está velha', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  let reads = 0;
+  const { session } = setup({ state: async () => { reads++; return { ...state }; } });
+  await session.connect(project);
+  assert.equal(reads, 1);
+  session.setVisible(false); session.setVisible(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 1, 'leitura recente não provoca consulta');
+  session.setVisible(false);
+  t.mock.timers.setTime(Date.now() + 60000);
+  session.setVisible(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 2, 'leitura velha consulta na hora');
+  assert.equal(session.get().busy, false);
   session.dispose();
 });

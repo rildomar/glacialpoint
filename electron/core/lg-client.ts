@@ -5,13 +5,18 @@ import type { LGCapabilities, LGCommand, LGDevice, LGState } from '../../shared/
 
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): ObjectValue => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as ObjectValue : {};
-const at = (value: unknown, ...keys: string[]): unknown => keys.reduce((v, key) => object(v)[key], value);
-const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
-const string = (value: unknown): string | null => typeof value === 'string' ? value : null;
-const bool = (value: unknown): boolean | null => typeof value === 'boolean' ? value : null;
+export const at = (value: unknown, ...keys: string[]): unknown => keys.reduce((v, key) => object(v)[key], value);
+export const number = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
+export const string = (value: unknown): string | null => typeof value === 'string' ? value : null;
+export const bool = (value: unknown): boolean | null => typeof value === 'boolean' ? value : null;
 const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 
-export class LGError extends Error {}
+// O código da LG acompanha o erro: o tempo real precisa reconhecer alguns
+// deles (ex.: 1207 = "já assinado") em vez de tratar tudo como falha.
+// `auth` marca o que não adianta repetir sem trocar o token.
+export class LGError extends Error {
+  constructor(message: string, readonly code?: string, readonly auth = false) { super(message); }
+}
 export function parseEnergy(data: unknown, dates: string[]): EnergyPoint[] {
   if (at(data, 'resultCode') !== '0000' || !Array.isArray(at(data, 'result', 'dataList'))) throw new LGError('A LG não disponibilizou o histórico de consumo. Tente novamente mais tarde.');
   const rows = at(data, 'result', 'dataList') as unknown[];
@@ -92,18 +97,19 @@ export class LGClient implements LGTransport {
         method, redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
         headers: { Authorization: `Bearer ${this.token}`, 'x-country': 'BR', 'x-client-id': this.clientId,
           'x-message-id': randomBytes(16).toString('base64url'), 'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',
-          'x-service-phase': 'OP', 'Content-Type': 'application/json', ...(payload ? { 'x-conditional-control': 'true' } : {}) },
+          'x-service-phase': 'OP', 'Content-Type': 'application/json', ...(payload && route.endsWith('/control') ? { 'x-conditional-control': 'true' } : {}) },
         body: payload ? JSON.stringify(payload) : undefined,
       });
     } catch { throw new LGError('Não foi possível acessar a LG. Verifique a internet e tente novamente.'); }
     const data: unknown = await response.json().catch(() => null);
     const code = String(at(data, 'error', 'code') ?? '');
-    if (response.status === 401 || response.status === 403 || ['1103','1218','1301','1302','1303','1305','1309'].includes(code)) throw new LGError('Token inválido, expirado ou sem permissão. Gere outro token com acesso aos aparelhos.');
-    if (response.status === 429 || code === '1306') throw new LGError('Limite de pedidos da LG atingido. Aguarde alguns minutos antes de atualizar.');
-    if (['1222','2209','2301'].includes(code)) throw new LGError('O aparelho está offline na LG. Confira a conexão pelo aplicativo ThinQ.');
-    if (response.status >= 500) throw new LGError('Os servidores da LG estão indisponíveis. Tente novamente mais tarde.');
-    if (!response.ok || at(data, 'error')) throw new LGError('A LG recusou a solicitação. Confira se o aparelho permite essa operação.');
-    if (method === 'POST') return undefined;
+    if (response.status === 401 || response.status === 403 || ['1103','1218','1301','1302','1303','1305','1309'].includes(code)) throw new LGError('Token inválido, expirado ou sem permissão. Gere outro token com acesso aos aparelhos.', code || undefined, true);
+    if (response.status === 429 || code === '1306') throw new LGError('Limite de pedidos da LG atingido. Aguarde alguns minutos antes de atualizar.', code || undefined);
+    if (['1222','2209','2301'].includes(code)) throw new LGError('O aparelho está offline na LG. Confira a conexão pelo aplicativo ThinQ.', code);
+    if (response.status >= 500) throw new LGError('Os servidores da LG estão indisponíveis. Tente novamente mais tarde.', code || undefined);
+    if (!response.ok || at(data, 'error')) throw new LGError('A LG recusou a solicitação. Confira se o aparelho permite essa operação.', code || undefined);
+    // POST pode responder sem corpo (ex.: assinaturas); GET precisa da resposta tipada.
+    if (method === 'POST') return data === null ? undefined : at(data, 'response');
     if (data === null || at(data, 'response') === undefined) throw new LGError('Resposta inesperada da LG. Tente atualizar novamente.');
     return at(data, 'response');
   }
@@ -117,6 +123,31 @@ export class LGClient implements LGTransport {
   async profile(id: string, signal: AbortSignal) { return capabilities(await this.request('GET', `devices/${encodeURIComponent(id)}/profile`, signal)); }
   async state(id: string, signal: AbortSignal) { return parseState(await this.request('GET', `devices/${encodeURIComponent(id)}/state`, signal)); }
   async send(id: string, payload: ObjectValue, signal: AbortSignal) { await this.request('POST', `devices/${encodeURIComponent(id)}/control`, signal, payload); }
+  // Canal de tempo real (push da nuvem): preparação do cliente MQTT descrita
+  // em lg-push.ts. Os corpos e códigos seguem a biblioteca oficial da LG.
+  async route(signal: AbortSignal): Promise<{ host: string; port: number }> {
+    const data = await this.request('GET', 'route', signal);
+    const server = string(at(data, 'mqttServer'));
+    if (!server) throw new LGError('A LG não informou o servidor de tempo real desta conta.');
+    const address = server.replace(/^mqtts?:\/\//, '');
+    const separator = address.lastIndexOf(':');
+    return separator > 0
+      ? { host: address.slice(0, separator), port: Number(address.slice(separator + 1)) || 8883 }
+      : { host: address, port: 8883 };
+  }
+  async registerMqttClient(signal: AbortSignal) {
+    await this.request('POST', 'client', signal, { type: 'MQTT', 'service-code': 'SVC202', 'device-type': '607', allowExist: true });
+  }
+  async issueCertificate(csr: string, signal: AbortSignal): Promise<{ certificate: string; topics: string[] }> {
+    const data = await this.request('POST', 'client/certificate', signal, { 'service-code': 'SVC202', csr });
+    const certificate = string(at(data, 'result', 'certificatePem'));
+    const topics = strings(at(data, 'result', 'subscriptions'));
+    if (!certificate || !topics.length) throw new LGError('A LG não emitiu o certificado do canal de tempo real.');
+    return { certificate, topics };
+  }
+  async subscribe(id: string, kind: 'event' | 'push', signal: AbortSignal) {
+    await this.request('POST', `${kind}/${encodeURIComponent(id)}/subscribe`, signal, kind === 'event' ? { expire: { unit: 'HOUR', timer: 4464 } } : undefined);
+  }
   async energy(id: string, signal: AbortSignal): Promise<EnergyReport> {
     const route = `devices/energy/${encodeURIComponent(id)}`;
     const profile = await this.request('GET', `${route}/profile`, signal);

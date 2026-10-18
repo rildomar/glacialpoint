@@ -6,7 +6,7 @@ O GlacialPoint conversa direto com as nuvens oficiais de duas linhas de ar-condi
 
 ## Estado atual
 
-- **LG ThinQ** — conexão validada com a conta real do usuário (2026-10-17, rota do QR para contas Google); o painel lê o estado ao vivo e envia os controles anunciados pelo modelo. Guia completo em [`docs/LG.md`](docs/LG.md).
+- **LG ThinQ** — conexão validada com a conta real do usuário (2026-10-17, rota do QR para contas Google); o painel lê o estado ao vivo, recebe **tempo real** pelo push da nuvem (MQTT sobre AWS IoT) e envia os controles anunciados pelo modelo. Guia completo em [`docs/LG.md`](docs/LG.md).
 - **Elgin Smart (Tuya)** — plataforma confirmada na prática (2026-10-17); adaptador de núcleo, push em tempo real, estimativa de consumo e interface (conexão, controle e tutorial) implementados e testados. Falta validar um comando pelo aplicativo com o aparelho real e confirmar a faixa prática de temperatura. Investigação completa em [`docs/ELGIN.md`](docs/ELGIN.md).
 - **Energia** — histórico LG validado ao vivo (30 dias e seis meses); estimativa do Elgin implementada (o aparelho não mede energia).
 - **macOS** — próximo marco: compilar e validar em hardware real (bandeja/menu bar, foco, posicionamento e Keychain).
@@ -17,7 +17,8 @@ O GlacialPoint conversa direto com as nuvens oficiais de duas linhas de ar-condi
 - **Controle real, por integração**: LG ThinQ e Elgin Smart, com abas LG/Elgin quando as duas contas estão conectadas e seletor de aparelho quando há mais de um (a escolha fica lembrada).
 - **Só o que o aparelho anuncia**: cada controle aparece conforme as capacidades lidas do modelo; dado ausente é "não informado" — nunca zero presumido.
 - **Comandos disciplinados**: um por vez, sem alteração otimista e sem repetir POST ambíguo; depois do envio, uma leitura confirma o novo estado.
-- **Tempo real**: o Elgin recebe atualizações empurradas pela nuvem (~1 s, inclusive mudanças feitas por fora, no celular ou no controle físico); o LG consulta por polling — 20 s com o painel visível, 5 min oculto ou após erro, com pausa na suspensão.
+- **Mostrador circular**: cada aparelho ganha um arco com a escala de temperatura do modelo, e o próprio arco é o seletor — arrastar escolhe a temperatura desejada (o comando só sai ao soltar o clique; as setas do teclado também ajustam). O valor selecionado fica no centro e a leitura do ambiente logo abaixo.
+- **Tempo real**: LG e Elgin recebem atualizações empurradas pela nuvem (~1 s, inclusive mudanças feitas por fora, no celular ou no controle físico), com selo de estado no painel; o polling fica como rede de segurança — 20 s com o painel visível, 5 min oculto, após erro ou quando o tempo real já provou o canal, com pausa na suspensão. Abrir o painel força uma consulta na hora quando a última leitura tem mais de 10 s.
 - **Consumo e custo**: tela de energia por integração (histórico ThinQ no LG; estimativa por tempo ligado no Elgin), tarifa em R$/kWh e custo mensal estimado.
 - **Tutoriais dentro do aplicativo**: "Como conectar" para as duas integrações, com passo a passo ilustrado e botões que abrem os portais oficiais.
 - **Painel de bandeja (Windows)**: abre junto à bandeja, oculta ao perder foco, ao pressionar Escape ou ao fechar; arraste pelo cabeçalho e a posição fica guardada entre aberturas.
@@ -65,15 +66,15 @@ Mudanças no processo Electron/preload exigem reiniciar o `desktop:dev`. O aplic
 | Comando | O que cobre |
 |---|---|
 | `npm run test:e2e` | Interface no navegador (Playwright + Edge): **17 casos** — prévia, formulários de conexão, controles por capacidade, energia, alternância de integrações e tutoriais |
-| `npm run test:lg` | Núcleo LG (node): **11 casos** — token, descoberta, perfil/estado, comandos, energia e tarifa |
-| `npm run test:elgin` | Núcleo Elgin (node): **31 casos** — fixtures, comandos estritos, assinatura, paginação, sessão, push em tempo real e estimativa de consumo |
+| `npm run test:lg` | Núcleo LG (node): **23 casos** — token, descoberta, perfil/estado, comandos, canal de tempo real (rota, certificado, assinaturas e renovação), energia e tarifa |
+| `npm run test:elgin` | Núcleo Elgin (node): **32 casos** — fixtures, comandos estritos, assinatura, paginação, sessão, push em tempo real e estimativa de consumo |
 | `npm run test:desktop` | Electron compilado: bridge, IPC, isolamento da interface, bloqueio de novas janelas, fechamento para a bandeja, área de arrasto e memória de posição |
 
 O teste desktop usa um perfil temporário separado. `npm run build` limpo é esperado antes de qualquer commit.
 
 ## Energia e tarifa
 
-A tela de consumo (ícone de gráfico) segue a integração e o aparelho dos controles — e permite trocar a seleção no topo quando há mais de uma opção.
+A tela de consumo (ícone de gráfico) segue a integração e o aparelho dos controles — e permite trocar a seleção no topo quando há mais de uma opção. O dia mais recente fechado aparece em destaque ("consumo do dia"), com selo de tendência em relação ao anterior quando há leitura; as estatísticas trazem a média diária de 30 dias.
 
 - **LG — histórico real**: perfil de energia e histórico ThinQ de 30 dias completos mais seis meses (incluindo o atual), no calendário de America/Sao_Paulo. Valores em Wh são convertidos para kWh; ausências ficam como sem leitura (zero real continua zero) e o mês atual é parcial.
 - **Elgin — estimativa**: o aparelho não reporta consumo, então o aplicativo estima por tempo ligado (logs do canal `switch`, janela de 7 dias) vezes um consumo médio configurável (padrão 0,7 kWh/h), com acumulado diário que sobrevive a dias sem abrir a tela. O painel marca **ESTIMATIVA** e explica o cálculo.
@@ -85,7 +86,7 @@ A tela de consumo (ícone de gráfico) segue a integração e o aparelho dos con
 
 - `src/` — interface React (painéis LG/Elgin, energia, configurações, tutoriais) e dados simulados da prévia, sempre identificados como tais.
 - `electron/` — processo desktop: `main.ts` (janela, bandeja, IPC, posição da janela), `preload.ts` (API mínima) e stores (credenciais, tarifa, estimativa de consumo, posição da janela).
-- `electron/core/` — integrações e regras independentes da interface: cliente/sessão LG, cliente/sessão/push/energia Elgin e validação de comandos.
+- `electron/core/` — integrações e regras independentes da interface: cliente/sessão/push LG e Elgin, energia e validação de comandos.
 - `shared/` — contratos TypeScript compartilhados entre interface e processo principal; mudança aqui atualiza os dois lados juntos.
 - `tests/` — Playwright (prévia) e testes de núcleo (node), com fixtures anonimizadas.
 - `scripts/` — build do desktop, testes de núcleo/desktop e sondas da API Tuya (`tuya-probe`, `tuya-control`, `tuya-pulsar`, `tuya-energy`).

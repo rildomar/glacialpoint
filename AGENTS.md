@@ -4,7 +4,7 @@ Instruções para agentes de IA que trabalham neste repositório. Leia antes de 
 
 ## O que é
 
-App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada; Elgin (plataforma Tuya) tem adaptador de núcleo e interface de conexão/controle no painel — falta a validação ao vivo pelo app.
+App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada, com canal de tempo real (push da nuvem via MQTT); Elgin (plataforma Tuya) tem adaptador de núcleo e interface de conexão/controle no painel — falta a validação ao vivo pelo app.
 
 ## Mapa do repositório
 
@@ -51,7 +51,7 @@ Inicie o app desktop sempre por um terminal comum do Windows. Apps empacotados (
 - Estado confirmado ≠ alterações pendentes. Ausência de dado é "não informado" — nunca zero presumido.
 - Controles só aparecem se anunciados no perfil do aparelho; capacidade ausente não é suposta.
 - `electron/core/` não importa UI; a interface só fala com o processo principal pelo preload.
-- Preserve o polling como rede de segurança: 20 s com painel visível; 5 min oculto, após erro ou quando o push em tempo real já provou o canal; pausa em suspensão.
+- Preserve o polling como rede de segurança: 20 s com painel visível; 5 min oculto, após erro ou quando o push em tempo real já provou o canal; pausa em suspensão. Abrir o painel (oculto → visível) força consulta na hora quando a última leitura tem mais de 10 s.
 - Commits em português, mensagem direta (o porquê), mudanças pequenas; commit só depois da validação do usuário.
 
 ## Elgin (marco F)

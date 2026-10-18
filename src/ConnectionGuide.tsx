@@ -24,7 +24,7 @@ export default function ConnectionGuide({ service, back, configure }: { service:
       <GuideStep n={1} title="Tenha o ar no aplicativo LG ThinQ">Confirme que o ar-condicionado já aparece e funciona no app LG ThinQ, com a mesma conta que você vai usar aqui.</GuideStep>
       <GuideStep n={2} title="Abra o portal de tokens da LG" action={<button className="lg-button" disabled={!lg} onClick={openPortal}>Abrir portal de tokens da LG ↗</button>} visual={<MockPortalLogin/>}>O portal é onde se cria o token pessoal que autoriza o GlacialPoint.</GuideStep>
       <GuideStep n={3} title="Entre na sua conta" visual={<MockScan caption="Câmera do celular" confirmation="ThinQ confirma a entrada"/>}>Com senha LG, entre normalmente. Conta criada pelo Google? Escolha a opção de entrar por QR e aponte a câmera do celular para o código: o aplicativo ThinQ confirma e a página entra sozinha.</GuideStep>
-      <GuideStep n={4} title="Crie e copie o token" visual={<MockTokenCreate/>}>No portal, use ADD NEW TOKEN: dê um nome (ex.: glacialpoint), autorize consultar aparelhos, ler estado e enviar controles e confirme em CREATE. Copie o código que aparece — começa com thinqpat_.</GuideStep>
+      <GuideStep n={4} title="Crie e copie o token" visual={<MockTokenCreate/>}>No portal, use ADD NEW TOKEN: dê um nome (ex.: glacialpoint), autorize consultar aparelhos, ler estado, enviar controles e as permissões de eventos/notificações (o tempo real do painel) e confirme em CREATE. Copie o código que aparece — começa com thinqpat_.</GuideStep>
       <GuideStep n={5} title="Cole no GlacialPoint">Em Configurações → LG ThinQ, cole no campo "Token pessoal" e conecte. O token fica criptografado neste computador; não compartilhe.</GuideStep>
     </div>
     <GuideTips items={[

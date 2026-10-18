@@ -9,7 +9,8 @@ O GlacialPoint fala direto com a API oficial da LG (região Brasil) usando um **
 - Lista os ar-condicionados da conta e mostra um por vez — com seletor quando há mais de um (a escolha fica lembrada).
 - Lê o perfil do modelo e monta os controles **só com o que o aparelho anuncia**: ligar/desligar, modos (resfriar, secar, ventilar, auto), temperatura alvo, velocidades de ventilação, oscilação, Eco e temporizador/sono. Capacidades variam por modelo.
 - Envia um comando por vez, **sem alteração otimista**; depois do envio, uma leitura confirma o novo estado. Falha pede atualização antes de tentar de novo.
-- Mantém o estado atualizado por consultas: 20 s com o painel visível, 5 min oculto ou após erro; pausam durante a suspensão do computador. O botão Atualizar força uma consulta na hora.
+- Recebe mudanças **em tempo real** pelo canal de push da nuvem da LG (MQTT; ~1 s, inclusive as feitas por fora — controle remoto, aplicativo ThinQ, agendamentos). O selo do painel mostra "conectando tempo real…", "tempo real ativo" ou "tempo real indisponível" (token sem permissão de eventos/push ou modelo sem suporte).
+- Mantém o polling como rede de segurança: 20 s com o painel visível, 5 min oculto ou após erro — e 5 min quando o tempo real já provou o canal; pausam durante a suspensão do computador. O botão Atualizar força uma consulta na hora, e abrir o painel já consulta quando a última leitura tem mais de 10 s.
 - Consulta o **histórico de energia** do ThinQ (30 dias completos mais seis meses, incluindo o atual, no calendário de America/Sao_Paulo) para a tela de consumo. Valores em Wh viram kWh; ausências ficam como "sem leitura".
 
 ## Pré-requisitos
@@ -27,7 +28,7 @@ O portal é o mesmo que o aplicativo abre no botão **"Abrir portal de tokens da
 
 1. Entre com o ID (e-mail) e a senha da conta LG.
 2. **ADD NEW TOKEN** → dê um nome (ex.: `glacialpoint`).
-3. Autorize a consulta de aparelhos, a leitura de perfil/estado e o envio de controles.
+3. Autorize a consulta de aparelhos, a leitura de perfil/estado, o envio de controles e as permissões de **eventos/notificações** (o tempo real do painel).
 4. **CREATE** e copie o token gerado — ele começa com `thinqpat_`.
 
 ### Conta criada via Google/SSO (rota do QR — a que usamos)
@@ -38,7 +39,7 @@ Contas sociais não têm senha LG para digitar no portal; o login por senha não
 2. No celular, abra a **câmera** comum (não o aplicativo da LG) e aponte para o QR exibido na tela do computador.
 3. O celular abre o **aplicativo LG ThinQ** já logado; confirme a autorização.
 4. A sessão no computador entra sozinha na conta.
-5. Gere e copie o token como na rota direta (ADD NEW TOKEN → nome → permissões → CREATE).
+5. Gere e copie o token como na rota direta (ADD NEW TOKEN → nome → permissões, incluindo eventos/notificações → CREATE).
 
 ## Colocar no GlacialPoint
 
@@ -60,6 +61,7 @@ Contas sociais não têm senha LG para digitar no portal; o login por senha não
 | Página não carrega ou botões mortos | bloqueador de anúncios/extensão | repita em janela anônima sem extensões |
 | `token_unauthorized` no aplicativo | token de outra região ou de outra conta | gere com país Brasil, na mesma conta do aparelho |
 | Conecta, mas não lista o ar | aparelho não está nessa conta do LG ThinQ | confira no aplicativo LG ThinQ qual conta tem o aparelho |
+| Selo "tempo real indisponível" no painel | token sem as permissões de eventos/push (ou modelo antigo) | gere um token novo com todas as permissões no portal e reconecte; sem tempo real o painel segue atualizando por consulta |
 
 ## Segurança
 
@@ -69,13 +71,14 @@ Contas sociais não têm senha LG para digitar no portal; o login por senha não
 
 ## Testes
 
-- `npm run test:lg` — 11 casos de núcleo (node): validação do token, descoberta de aparelhos, perfil/estado, montagem de comandos, energia e tarifa.
+- `npm run test:lg` — 23 casos de núcleo (node): validação do token, descoberta de aparelhos, perfil/estado, montagem de comandos, canal de tempo real (rota, certificado, assinaturas, renovação e bloqueios), energia e tarifa.
 - `npm run test:e2e` — casos de interface cobrindo o formulário de token, os controles conforme a capacidade anunciada e a alternância entre integrações.
 - `npm run test:desktop` — ponte nativa e armazenamento seguro no Electron compilado.
 
 ## Notas internas (implementação)
 
 - Cliente HTTP em `electron/core/lg-client.ts` (fala com `https://api-aic.lgthinq.com/`, cabeçalhos `x-country: BR` e `x-client-id` do ThinQ) e ciclo de sessão em `electron/core/lg-session.ts`.
+- Canal de tempo real em `electron/core/lg-push.ts`: MQTT com certificado de cliente emitido pela LG (chave RSA 2048 + CSR `CN=lg_thinq` → `POST /client/certificate`), assinatura de eventos renovada a cada 24 h e relatórios `DEVICE_STATUS` aplicados como leitura confirmada. Mesma arquitetura da integração oficial do Home Assistant, com base na biblioteca da própria LG [`thinqconnect`](https://github.com/thinq-connect/pythinqconnect) (Apache-2.0); a CA raiz da Amazon vai embutida no módulo.
 - O token precisa começar com `thinqpat_` (validado antes de salvar) e é guardado via safeStorage em `lg-credential.bin`, na pasta de dados do aplicativo; a interface recebe apenas snapshots sem o token.
 - O botão "Abrir portal de tokens da LG" (Configurações e tutorial) abre `https://connect-pat.lgthinq.com/` por IPC (`lg:token-page`).
-- Consultas automáticas: 20 s com o painel visível, 5 min oculto ou após erro; pausam durante a suspensão. Agrupamento de comandos e outras regiões ficam para uma etapa posterior.
+- Consultas automáticas (rede de segurança): 20 s com o painel visível, 5 min oculto ou após erro — e 5 min sempre que o canal de tempo real já entregou leitura; pausam durante a suspensão. Agrupamento de comandos e outras regiões ficam para uma etapa posterior.

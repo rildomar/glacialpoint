@@ -70,23 +70,25 @@ test('conexão Elgin limpa credenciais e controla só o que o aparelho anuncia',
   await expect(page.getByRole('button', { name: 'Aquecer' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Oscilar' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Dormir' })).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByText('16° a 30° · Celsius')).toBeVisible();
-  await expect(page.locator('.temperature-number')).toContainText('24');
+  await expect(page.locator('.dial-number')).toContainText('24');
+  await expect(page.locator('.dial-ambient-value')).toContainText('27');
 
-  await page.getByRole('button', { name: 'Aumentar temperatura' }).click();
+  const dial = page.getByRole('slider', { name: 'Temperatura desejada' });
+  await dial.focus();
+  await page.keyboard.press('ArrowUp');
   await expect(page.getByRole('button', { name: 'Desligar aparelho' })).toBeDisabled();
   await expect(page.getByRole('status')).toContainText('Ajustando seu clima');
   await page.screenshot({ path: 'artifacts/elgin-command-loading.png' });
   await expect(page.locator('.command-overlay')).toHaveCount(0);
-  await expect(page.locator('.temperature-number')).toContainText('25');
+  await expect(page.locator('.dial-number')).toContainText('25');
 
   await page.getByRole('button', { name: 'Ventilar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Ventilar', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.command-overlay')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Aumentar temperatura' })).toBeDisabled();
+  await expect(dial).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('button', { name: 'Resfriar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Resfriar', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Aumentar temperatura' })).toBeEnabled();
+  await expect(dial).toHaveAttribute('aria-disabled', 'false');
   expect(await page.evaluate(() => {
     const content = document.querySelector('.live-elgin')!;
     return document.documentElement.scrollWidth <= innerWidth && content.scrollWidth <= content.clientWidth;
@@ -210,6 +212,7 @@ test('consumo estimado do Elgin deixa claro que o aparelho não mede energia', a
   await page.getByRole('button', { name: 'Abrir consumo' }).click();
   await expect(page.getByRole('heading', { name: 'Seu consumo.' })).toBeVisible();
   await expect(page.getByText('ESTIMATIVA', { exact: true })).toBeVisible();
+  await expect(page.locator('.energy-today-value')).toContainText('0,4');
   await expect(page.locator('.energy-value')).toContainText('2,1');
   await expect(page.locator('.energy-estimate strong')).toContainText('1,89');
   await expect(page.getByText(/não mede energia/)).toBeVisible();

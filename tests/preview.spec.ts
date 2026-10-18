@@ -3,21 +3,26 @@ import { test, expect } from '@playwright/test';
 test('demo controls enforce power, mode and temperature limits', async ({ page }) => {
   await page.goto('/');
   const temperature = page.getByRole('slider', { name: 'Temperatura desejada' });
-  await expect(temperature).toHaveValue('23');
-  await page.getByRole('button', { name: 'Aumentar temperatura' }).click();
-  await expect(temperature).toHaveValue('24');
+  await expect(temperature).toHaveAttribute('aria-valuenow', '23');
   await temperature.focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(temperature).toHaveAttribute('aria-valuenow', '24');
   await page.keyboard.press('End');
-  await expect(temperature).toHaveValue('30');
-  await expect(page.getByRole('button', { name: 'Aumentar temperatura' })).toBeDisabled();
+  await expect(temperature).toHaveAttribute('aria-valuenow', '30');
+  await page.keyboard.press('ArrowUp');
+  await expect(temperature).toHaveAttribute('aria-valuenow', '30');
   await page.getByRole('button', { name: 'Secar', exact: true }).click();
-  await expect(temperature).toBeDisabled();
+  await expect(temperature).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('button', { name: 'Desligar aparelho simulado' }).click();
   await expect(page.getByRole('button', { name: 'Eco', exact: true })).toBeDisabled();
   await expect(page.getByRole('radio', { name: 'Alta', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Ligar aparelho simulado' }).click();
   await page.getByRole('button', { name: 'Resfriar', exact: true }).click();
-  await expect(temperature).toBeEnabled();
+  await expect(temperature).toHaveAttribute('aria-disabled', 'false');
+  // O clique solto no meio do arco define o valor central da escala (24°).
+  const box = (await temperature.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(temperature).toHaveAttribute('aria-valuenow', '24');
 });
 
 test('only demo devices appear and settings preserve control state', async ({ page }) => {

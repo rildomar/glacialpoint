@@ -22,9 +22,12 @@
     "test:elgin": "node scripts/test-elgin.mjs"
   },
   "dependencies": {
+    "@peculiar/x509": "^2.2.0",
     "lucide-react": "^0.468.0",
+    "mqtt": "^5.16.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "reflect-metadata": "^0.2.2",
     "ws": "^8.22.0"
   },
   "devDependencies": {
