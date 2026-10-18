@@ -103,10 +103,13 @@ export function commandPayload(input: unknown, caps: ElginCapabilities, state: E
   return unsupported();
 }
 
+export interface ElginLogEntry { code: string; value: unknown; time: number }
+
 export interface ElginTransport {
   devices(signal: AbortSignal): Promise<ElginDevice[]>;
   profile(id: string, signal: AbortSignal): Promise<ElginCapabilities>;
   state(id: string, signal: AbortSignal): Promise<ElginState>;
+  logs?(id: string, query: { start: number; end: number; codes: string }, signal: AbortSignal): Promise<ElginLogEntry[]>;
   send(id: string, payload: { code: string; value: boolean | string | number }, signal: AbortSignal): Promise<void>;
 }
 
@@ -215,6 +218,27 @@ export class ElginClient implements ElginTransport {
 
   async state(id: string, signal: AbortSignal): Promise<ElginState> {
     return parseState(await this.request('GET', `/v1.0/iot-03/devices/${encodeURIComponent(id)}/status`, signal), this.scales.get(id));
+  }
+
+  // Logs de DP (edições gratuitas entregam os últimos 7 dias). A paginação
+  // segue o protocolo da Tuya: a página seguinte usa start_row_key = next_row_key.
+  async logs(id: string, query: { start: number; end: number; codes: string }, signal: AbortSignal): Promise<ElginLogEntry[]> {
+    const entries: ElginLogEntry[] = [];
+    let rowKey: string | null = null;
+    for (let page = 0; page < 10; page++) {
+      const params: Record<string, string | number> = { type: 7, size: 100, start_time: query.start, end_time: query.end, codes: query.codes };
+      if (rowKey) params.start_row_key = rowKey;
+      const result = await this.request('GET', `/v1.0/devices/${encodeURIComponent(id)}/logs`, signal, { query: params });
+      const rows = at(result, 'logs');
+      if (Array.isArray(rows)) for (const row of rows) {
+        const code = string(at(row, 'code')), time = number(at(row, 'event_time'));
+        if (code && time !== null) entries.push({ code, value: at(row, 'value'), time });
+      }
+      const next = string(at(result, 'next_row_key'));
+      if (at(result, 'has_next') !== true || !next || next === rowKey) break;
+      rowKey = next;
+    }
+    return entries;
   }
 
   async send(id: string, payload: { code: string; value: boolean | string | number }, signal: AbortSignal): Promise<void> {

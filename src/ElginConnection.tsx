@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { CircleHelp } from 'lucide-react';
 import { elginRegions, type ElginRegion, type ElginSnapshot } from '../shared/elgin';
 
 const regionLabels: Record<ElginRegion, string> = {
@@ -11,7 +12,7 @@ const regionLabels: Record<ElginRegion, string> = {
   sg: 'Singapura',
 };
 
-export default function ElginConnection({ snapshot, onConnected }: { snapshot: ElginSnapshot; onConnected?: () => void }) {
+export default function ElginConnection({ snapshot, onConnected, guide }: { snapshot: ElginSnapshot; onConnected?: () => void; guide?: () => void }) {
   const [accessId, setAccessId] = useState('');
   const [accessSecret, setAccessSecret] = useState('');
   const [region, setRegion] = useState<ElginRegion>('us');
@@ -30,6 +31,7 @@ export default function ElginConnection({ snapshot, onConnected }: { snapshot: E
   };
   return <section className="lg-connection" aria-label="Conexão Elgin Smart">
     <div className="integration-row"><span className="provider-logo elgin-logo">e</span><div><strong>Elgin Smart</strong><span>{snapshot.connected ? `${snapshot.devices.length} aparelho(s) · Tuya Cloud` : 'Conecte seu projeto Tuya Cloud'}</span></div></div>
+    {elgin && guide && <button className="guide-link" onClick={guide}><CircleHelp size={12}/>Passo a passo de conexão</button>}
     {!elgin ? <p className="settings-footnote">Abra a versão desktop para conectar sua conta. Esta página é uma demonstração.</p> : snapshot.connected ? <>
       <p className="settings-footnote">Credenciais protegidas pelo Windows. Sua conta Tuya será reconectada ao abrir o aplicativo.</p>
       <button className="lg-button" onClick={() => run(() => elgin.disconnect())}>Desconectar Elgin</button>

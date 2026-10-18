@@ -6,7 +6,7 @@ test('real-data screen, missing readings, tariff persistence and clearing estima
   await page.addInitScript(({ initial, dates }) => {
     const snapshot = { ...initial, connected: true, devices: [{ id: 'energy-test', name: 'LG da sala', model: 'Teste' }], selectedId: 'energy-test' };
     window.glacialpoint = { isDesktop: true, listIntegrations: async () => [],
-      energySettings: { read: async () => ({ tariff: JSON.parse(localStorage.getItem('test-tariff') ?? 'null') }), save: async tariff => { localStorage.setItem('test-tariff', JSON.stringify(tariff)); return { tariff }; } },
+      energySettings: { read: async () => ({ tariff: JSON.parse(localStorage.getItem('test-tariff') ?? 'null'), averagePower: JSON.parse(localStorage.getItem('test-power') ?? 'null') }), save: async settings => { localStorage.setItem('test-tariff', JSON.stringify(settings.tariff)); localStorage.setItem('test-power', JSON.stringify(settings.averagePower)); return settings; } },
       lg: { snapshot: async () => snapshot, subscribe: () => () => {}, connect: async () => snapshot, disconnect: async () => initial, select: async () => snapshot, refresh: async () => snapshot, command: async () => snapshot, openTokenPage: async () => {},
         energy: async id => ({ deviceId: id, daily: dates.daily.map((date, i) => ({ date, kwh: i === 29 ? 6.249 : null })), monthly: dates.monthly.map((date, i) => ({ date, kwh: i === 5 ? 127.227 : i === 4 ? 243.804 : null })), supported: true, updatedAt: Date.now(), error: null }),
       } };
@@ -20,17 +20,19 @@ test('real-data screen, missing readings, tariff persistence and clearing estima
   await expect(page.locator('.energy-bars .missing')).toHaveCount(33);
   await page.getByRole('button', { name: 'Informar minha tarifa' }).click();
   await page.getByLabel('Tarifa por kWh (R$)').fill('0,95');
-  await page.getByRole('button', { name: 'Salvar tarifa e voltar' }).click();
+  await page.getByLabel('Consumo médio do aparelho (kWh por hora ligada)').fill('0,9');
+  await page.getByRole('button', { name: 'Salvar e voltar' }).click();
   await expect(page.locator('.energy-estimate strong')).toContainText('120,87');
   await page.screenshot({ path: 'artifacts/energy-desktop.png' });
   await page.reload(); await page.getByRole('button', { name: 'Abrir consumo' }).click();
   await expect(page.locator('.energy-estimate strong')).toContainText('120,87');
   await page.getByRole('button', { name: /Tarifa:.*editar/ }).click();
+  await expect(page.getByLabel('Consumo médio do aparelho (kWh por hora ligada)')).toHaveValue('0,9');
   await page.getByLabel('Tarifa por kWh (R$)').fill('-1');
-  await page.getByRole('button', { name: 'Salvar tarifa e voltar' }).click();
+  await page.getByRole('button', { name: 'Salvar e voltar' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByLabel('Tarifa por kWh (R$)').fill('');
-  await page.getByRole('button', { name: 'Salvar tarifa e voltar' }).click();
+  await page.getByRole('button', { name: 'Salvar e voltar' }).click();
   await expect(page.getByRole('button', { name: 'Informar minha tarifa' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });

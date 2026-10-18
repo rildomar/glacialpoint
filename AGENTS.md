@@ -4,7 +4,7 @@ Instruções para agentes de IA que trabalham neste repositório. Leia antes de 
 
 ## O que é
 
-App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada; Elgin (plataforma Tuya) tem adaptador de núcleo com os mesmos contratos e autenticação por projeto — falta a interface.
+App desktop independente para controle de ar-condicionado: Electron + React + TypeScript + Vite + Tailwind. Windows primeiro; macOS será validado em hardware real depois. Integração LG ThinQ (Brasil) implementada; Elgin (plataforma Tuya) tem adaptador de núcleo e interface de conexão/controle no painel — falta a validação ao vivo pelo app.
 
 ## Mapa do repositório
 
@@ -32,7 +32,9 @@ npm run package:win     # pasta em release/win-unpacked
 npm run dist:win        # instalador NSIS de desenvolvimento
 ```
 
-Antes de commitar: `npm run build` limpo e os testes relevantes à mudança.
+Antes de commitar: `npm run build` limpo, os testes relevantes à mudança — e a validação do usuário testando a mudança no app. Nada de commit antes disso (regra do usuário).
+
+Inicie o app desktop sempre por um terminal comum do Windows. Apps empacotados (MSIX — ex.: Codex, apps da Store) virtualizam `%APPDATA%`: credenciais salvas (`lg-credential.bin`, `elgin-credential.bin`) e a tarifa vão para o contêiner do app hospedeiro e "desaparecem" em execuções normais.
 
 ## Segurança (inegociável)
 
@@ -49,8 +51,8 @@ Antes de commitar: `npm run build` limpo e os testes relevantes à mudança.
 - Estado confirmado ≠ alterações pendentes. Ausência de dado é "não informado" — nunca zero presumido.
 - Controles só aparecem se anunciados no perfil do aparelho; capacidade ausente não é suposta.
 - `electron/core/` não importa UI; a interface só fala com o processo principal pelo preload.
-- Preserve o polling: 20 s com painel visível, 5 min oculto/após erro; pausa em suspensão.
-- Commits em português, mensagem direta (o porquê), mudanças pequenas.
+- Preserve o polling como rede de segurança: 20 s com painel visível; 5 min oculto, após erro ou quando o push em tempo real já provou o canal; pausa em suspensão.
+- Commits em português, mensagem direta (o porquê), mudanças pequenas; commit só depois da validação do usuário.
 
 ## Elgin (marco F)
 

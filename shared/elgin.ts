@@ -33,10 +33,15 @@ export type ElginCommand =
 export interface ElginProject { accessId: string; accessSecret: string; region: ElginRegion }
 export interface ElginCredentials extends ElginProject { selectedId: string | null }
 
+// Escuta em tempo real (push da nuvem): null = desligada; blocked = o serviço
+// de mensagens não está habilitado no projeto Tuya (volta ao polling).
+export type ElginRealtime = 'connecting' | 'on' | 'blocked';
+
 export interface ElginSnapshot {
   connected: boolean; busy: boolean; devices: ElginDevice[]; selectedId: string | null;
   state: ElginState | null; capabilities: ElginCapabilities | null;
   error: string | null; notice: string | null; updatedAt: number | null;
+  realtime: ElginRealtime | null;
 }
 
-export const emptyElgin: ElginSnapshot = { connected: false, busy: false, devices: [], selectedId: null, state: null, capabilities: null, error: null, notice: null, updatedAt: null };
+export const emptyElgin: ElginSnapshot = { connected: false, busy: false, devices: [], selectedId: null, state: null, capabilities: null, error: null, notice: null, updatedAt: null, realtime: null };

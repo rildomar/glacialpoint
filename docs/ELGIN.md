@@ -1,6 +1,6 @@
 # Integração Elgin — investigação e plano
 
-Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17); adaptador de núcleo implementado e validado em leitura contra a API real**. Falta a interface e a validação de comando pelo aplicativo. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
+Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17); adaptador de núcleo, push em tempo real, estimativa de consumo e interface (conexão, controle e tutoriais) implementados**. Falta a validação de um comando pelo aplicativo com o aparelho real. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
 
 ## Aparelho do usuário
 
@@ -78,14 +78,40 @@ Notas:
 - Sem DP de **velocidade do ventilador** e sem swing vertical na OpenAPI; o adaptador expõe apenas as capacidades acima (liga/desliga, modos, temperatura, swing horizontal, eco, sono, luz e trava).
 - `temp_set`: faixa do schema é 16–90 ℃ (160–900, escala 1); testada na prática em 23–24 ℃ — os extremos do split (limite real, provavelmente 16–30 ℃) ainda não foram testados.
 
+## Consumo de energia (sondagem 2026-10-17)
+
+- O modelo de dados do produto declara o DP `power_consumption` (id 28, leitura): contador com **0,03125 kWh por unidade** (texto do modelo: "单位：0.03125KWH，上报的数值*0.03125"), máximo 255 (≈ 8 kWh) e "tudo zero = 0 kWh".
+- Na prática **o aparelho não reporta esse DP**: o status mostra sempre `0` e a API de logs não tem um único reporte nos últimos 7 dias — enquanto `temp_current` reportou 100+ vezes, inclusive com o ar ligado durante os testes. Como o histórico de nuvem só existe desde o repareamento (2026-10-17), não há dado de consumo em parte alguma. Sem medição no firmware.
+- APIs de estatística (`/v1.0/devices/{id}/statistics/days|months|total` e `all-statistic-type`) retornam `28841101 — API is not subscribed` (faltaria autorizar "IoT Data Analytics" no projeto); o módulo de energia (`/v1.0/m/energy/...`, indicador `ele_usage`) retorna `1010` (serviço "Energy consumption statistics" também não assinado). Mesmo com os serviços, não haveria dado de energia — nada é reportado.
+- A **API de logs de DP funciona** (edição gratuita, últimos 7 dias: `GET /v1.0/devices/{id}/logs?type=7`), útil para reconstruir tempo ligado (`switch`) e temperatura (`temp_current`).
+- Sonda reutilizável: `node scripts/tuya-energy.mjs` (modelo · status · estatísticas · módulo de energia · logs; ids mascarados).
+- Consequência para o analytics: consumo real do Elgin só com medidor externo (tomada inteligente com leitura de energia); sem ele, apenas estimativa a partir do tempo ligado.
+
+### Estimativa de consumo (item A — 2026-10-17)
+
+- Sem tomada com medição e sem DP de energia reportado, o app estima o consumo **localmente**: tempo ligado × **consumo médio configurável** (padrão **0,7 kWh/h**; o campo aceita 0,05–10 na tela Energia de Configurações).
+- Tempo ligado: logs do canal `switch` (`GET /v1.0/devices/{id}/logs?type=7&codes=switch`), paginados por `start_row_key = next_row_key` (teto de 10 páginas). A janela cobre **7 dias completos** no fuso `America/Sao_Paulo` (meia-noite de seis dias atrás até agora); eventos viram intervalos, cortados na meia-noite local.
+- Acumulado por dia em `energy-estimate.json` no `userData` (escrita atômica): a janela de logs é **autoritativa** para os dias que cobre e os dias que saem da janela ficam congelados com o último valor — a estimativa não se perde se a tela não for aberta por mais de 7 dias.
+- Período aberto (ligou e não desligou) só é fechado em "agora" com o estado atual confirmando que está ligado; senão é descartado (conservador).
+- No painel, o relatório chega com `source: 'estimate'`, selo **ESTIMATIVA** e a explicação do cálculo; o custo usa a mesma tarifa. O dia corrente entra no acumulado do mês (parcial); o gráfico diário fecha em ontem, como no LG.
+- Resultado em cache por 5 minutos; trocar o consumo médio recalcula sem nova consulta à nuvem.
+- Testes: `tests/elgin-energy.test.ts` (9 casos) + caso de UI em `tests/elgin-ui.spec.ts`. Sonda ao vivo: `node scripts/tuya-energy.mjs` (seção final refaz a mesma conta sobre os dados reais).
+
 ## Adaptador no núcleo (2026-10-17)
 
 - Contratos: `shared/elgin.ts` (aparelho, capacidades, estado, comandos, snapshot) espelhando `shared/lg.ts`; `DesktopBridge.elgin` expõe snapshot, conectar, desconectar, selecionar, atualizar, comando e assinatura de mudanças.
 - Cliente: `electron/core/elgin-client.ts` — assinatura HMAC-SHA256, token renovado uma única vez em `1010`, descoberta paginada filtrando categoria `kt`, perfil a partir de `functions` + `specifications` (escala dos sensores) e estado em °C.
 - Sessão: `electron/core/elgin-session.ts` — mesmo ciclo do LG: geração/abort, credencial salva só depois da descoberta, um comando por vez, confirmação por leitura após o envio, sem repetição de POST ambíguo, polling 20 s/5 min e pausa em suspensão.
 - Credenciais: Access ID/Secret + região no `safeStorage` (`elgin-credential.bin`), sem fallback em texto puro. Nada de `local_key`/`ip` da resposta crua entra em contratos, fixtures ou logs.
-- Testes: `npm run test:elgin` (14 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
+- Testes: `npm run test:elgin` (31 casos: fixtures, comandos estritos, assinatura, paginação, erros, renovação de token, corridas de sessão e desconexão, push em tempo real e estimativa de consumo). Fixtures anonimizadas em `tests/fixtures/elgin-*.json`.
 - Validação real (somente leitura): o cliente do app rodou contra a API do projeto do usuário — 1 ar encontrado, capacidades e estado lidos corretamente (24 ℃). O envio de comando foi validado via scripts; a validação pelo aplicativo segue pendente.
+
+## Tempo real (push) — 2026-10-17
+
+- Antes o painel só descobria mudanças pelo polling (20 s). Agora `electron/core/elgin-push.ts` escuta o **Tuya Message Service (Pulsar sobre WebSocket)** — o mesmo canal dos apps oficiais — e a sessão aplica cada relatório como leitura confirmada: mudanças feitas por fora (Smart Life ou controle físico) aparecem em ~1 s. Com o canal comprovado (`pushedAt`), o polling vira rede de segurança (5 min).
+- Protocolo replicado dos SDKs oficiais: `wss://…:8285/ws/v2/consumer/persistent/{accessId}/out/event/{accessId}-sub`, headers de autenticação `username`/`password` (senha `md5(accessId + md5(secret))[8:24]`). O conteúdo vem cifrado em AES-GCM (nonce de 12 bytes na frente, etiqueta de 16 no fim) ou AES-ECB no modo legado, com a chave nos 16 caracteres centrais do secret; somente os pares código/valor do aparelho escolhido chegam adiante — nada de credencial ou payload cru em log ou estado.
+- Robustez: reconexão com backoff (3 s → 60 s), ping a cada 30 s, descarte de eventos de ciclo de vida e deduplicação das mensagens gêmeas (a nuvem manda o mesmo relatório nos protocolos 4 e 1000). HTTP 401 no handshake significa serviço de mensagens não assinado no projeto: o link para em `unauthorized` em vez de insistir. O projeto precisou dos serviços **Smart Home Basic Service** e **Device Status Notification** (Cloud → My Services).
+- Testes: `tests/elgin-push.test.ts` (socket dublê: senha, handshake, decifragem, dedupe, reconexão e 401). Sonda ao vivo: `node scripts/tuya-pulsar.mjs` (escuta e imprime os relatórios, ids mascarados).
 
 ## Interface no painel (2026-10-17)
 
@@ -93,7 +119,8 @@ Notas:
 - `src/LiveElginPanel.tsx`: seleção de aparelho, energia, modos, temperatura, swing horizontal, eco, sono, luz e trava — cada controle só aparece quando a capacidade correspondente é anunciada pelo aparelho. Mesmo ciclo do LG: um comando por vez, overlay de confirmação e nenhuma atualização otimista.
 - Com as duas integrações conectadas, abas **LG ThinQ** / **Elgin Smart** alternam os painéis; a escolha é lembrada em `localStorage` (apenas o identificador da integração, sem credenciais).
 - Temperatura: o DP anuncia 16–90 ℃ porque a mesma faixa atende ao modo Fahrenheit; para o split em Celsius a interface limita o ajuste a **16–30 ℃** até a validação dos extremos no aparelho. O protocolo continua aceitando a faixa anunciada.
-- Testes: `tests/elgin-ui.spec.ts` (3 casos) cobre limpeza das credenciais, controles condicionados às capacidades, overlay, alternância LG/Elgin, persistência da escolha e a conexão com o LG já ativo. Suíte Playwright completa: 11/11.
+- Passo a passo de conexão dentro do app: 6 passos cobrindo conta, projeto, serviços e vínculo (tela "Como conectar", acessível pelo painel de boas-vindas e por Configurações → Elgin Smart), com mocks animados e botão que abre o console Tuya (`iot.tuya.com`) pelo próprio app.
+- Testes: `tests/elgin-ui.spec.ts` (7 casos) cobre limpeza das credenciais, controles condicionados às capacidades, overlay, alternância LG/Elgin, persistência da escolha, a conexão com o LG já ativo, o consumo estimado (selo ESTIMATIVA e explicação), o seletor de aparelhos, a troca de integração na tela de análise e o tutorial de conexão. Suíte Playwright completa: 17/17.
 
 ## Limitações esperadas (a confirmar na prática)
 
@@ -109,9 +136,10 @@ Notas:
 3. ✅ **Teste de controle ao vivo** (2026-10-17): ligar/desligar, modo, temperatura e luz via `POST /v1.0/iot-03/devices/{id}/commands` — efeito confirmado na API **e** no aparelho.
 4. ✅ **Adaptador de núcleo** (2026-10-17): `shared/elgin.ts`, `elgin-client.ts`/`elgin-session.ts`, credencial no `safeStorage` e testes (`npm run test:elgin`) — leitura validada contra a API real.
 5. ✅ **Fixtures anonimizadas** (`tests/fixtures/elgin-*.json`).
-6. ✅ **Interface** (2026-10-17): conexão por Access ID/Secret + região, seleção de aparelho, controles conforme capacidades, abas LG/Elgin e testes de UI.
-7. **Validação pelo aplicativo** com o aparelho real: conectar pela tela de Configurações e enviar um comando (ex.: luz ou liga/desliga), confirmando o efeito físico e a leitura de volta.
-8. Confirmar a faixa prática de temperatura (16–30 ℃ na interface) e a semântica de `heat`/`health`/`gear_horizontal` (não expostos).
+6. ✅ **Interface** (2026-10-17): conexão por Access ID/Secret + região, seleção de aparelho, controles conforme capacidades, abas LG/Elgin, seletor de integração no consumo e tutoriais; testes de UI.
+7. ✅ **Tempo real e estimativa de consumo** (2026-10-17): push Pulsar integrado à sessão e estimativa por tempo ligado com consumo médio configurável.
+8. **Validação pelo aplicativo** com o aparelho real: conectar pela tela de Configurações e enviar um comando (ex.: luz ou liga/desliga), confirmando o efeito físico e a leitura de volta.
+9. Confirmar a faixa prática de temperatura (16–30 ℃ na interface) e a semântica de `heat`/`health`/`gear_horizontal` (não expostos).
 
 ## Referências
 

@@ -3,7 +3,7 @@ import { Fan, Minus, Plus, Power, Snowflake } from 'lucide-react';
 import type { LGCommand, LGSnapshot } from '../shared/lg';
 
 const labels: Record<string, string> = { COOL: 'Resfriar', AIR_DRY: 'Secar', FAN: 'Ventilar', AUTO: 'Auto', HEAT: 'Aquecer', LOW: 'Baixa', MID: 'Média', HIGH: 'Alta', POWER: 'Turbo' };
-export default function LiveLGPanel({ snapshot: s, configure }: { snapshot: LGSnapshot; configure: () => void }) {
+export default function LiveLGPanel({ snapshot: s, configure, guide }: { snapshot: LGSnapshot; configure: () => void; guide: () => void }) {
   const [failure, setFailure] = useState('');
   const lg = window.glacialpoint!.lg;
   const run = (action: () => Promise<unknown>) => { setFailure(''); void action().catch(() => setFailure('Não foi possível acessar a conexão. Tente novamente.')); };
@@ -12,8 +12,9 @@ export default function LiveLGPanel({ snapshot: s, configure }: { snapshot: LGSn
   const blocked = s.busy || !!s.error;
   const device = s.devices.find(d => d.id === s.selectedId);
   return <div className="live-lg">
-    {!s.connected ? <div className="lg-welcome"><Snowflake size={36}/><h2>Seu LG, por perto.</h2><p>Conecte sua conta ThinQ para controlar os aparelhos cadastrados nela.</p><button className="lg-button primary" onClick={configure}>{s.busy ? 'Conexão em andamento…' : 'Configurar LG ThinQ'}</button></div> : <>
-      <div className="device-tabs" role="group" aria-label="Aparelhos conectados">{s.devices.map(d => <button key={d.id} disabled={s.busy} aria-pressed={d.id === s.selectedId} onClick={() => run(() => lg.select(d.id))}>{d.name}</button>)}</div>
+    {!s.connected ? <div className="lg-welcome"><Snowflake size={36}/><h2>Seu LG, por perto.</h2><p>Conecte sua conta ThinQ para controlar os aparelhos cadastrados nela.</p><div className="welcome-actions"><button className="lg-button primary" onClick={configure}>{s.busy ? 'Conexão em andamento…' : 'Configurar LG ThinQ'}</button><button className="lg-button" onClick={guide}>Como conectar</button></div></div> : <>
+      {/* Com um único aparelho o nome já aparece no cabeçalho; o seletor só é exibido quando há mais de um. */}
+      {s.devices.length > 1 && <div className="device-tabs" role="group" aria-label="Aparelhos conectados">{s.devices.map(d => <button key={d.id} disabled={s.busy} aria-pressed={d.id === s.selectedId} onClick={() => run(() => lg.select(d.id))}>{d.name}</button>)}</div>}
       <div className={`controls ${state?.power ? 'powered' : ''}`}>
         <div className="device-heading"><div><span className="section-label">LG ThinQ · {device?.model}</span><h2>{device?.name}</h2></div>{caps?.power && <button className={`power-button ${state?.power ? 'on' : ''}`} disabled={blocked || state?.power == null} aria-label={state?.power ? 'Desligar aparelho' : 'Ligar aparelho'} aria-pressed={state?.power ?? false} onClick={() => command({ field: 'power', value: !state?.power })}><Power size={22}/></button>}</div>
         {state && caps ? <>

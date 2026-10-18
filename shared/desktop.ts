@@ -7,7 +7,7 @@ export interface Integration {
 export interface DesktopBridge {
   readonly isDesktop: true;
   listIntegrations(): Promise<Integration[]>;
-  energySettings: { read(): Promise<import('./energy').TariffSettings>; save(tariff: number | null): Promise<import('./energy').TariffSettings> };
+  energySettings: { read(): Promise<import('./energy').TariffSettings>; save(settings: import('./energy').TariffSettings): Promise<import('./energy').TariffSettings> };
   lg: {
     snapshot(): Promise<LGSnapshot>;
     energy(id: string): Promise<import('./energy').EnergyReport>;
@@ -21,11 +21,13 @@ export interface DesktopBridge {
   };
   elgin: {
     snapshot(): Promise<ElginSnapshot>;
+    energy(id: string): Promise<import('./energy').EnergyReport>;
     connect(project: ElginProject): Promise<ElginSnapshot>;
     disconnect(): Promise<ElginSnapshot>;
     select(id: string): Promise<ElginSnapshot>;
     refresh(): Promise<ElginSnapshot>;
     command(id: string, command: ElginCommand): Promise<ElginSnapshot>;
+    openConsolePage(): Promise<void>;
     subscribe(listener: (snapshot: ElginSnapshot) => void): () => void;
   };
 }

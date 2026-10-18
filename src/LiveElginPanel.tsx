@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Check, Droplets, Flame, Leaf, Lock, Minus, Moon, Plus, Power, Snowflake, Sparkles, Sun, Waves, Wind, type LucideIcon } from 'lucide-react';
-import type { ElginCommand, ElginSnapshot } from '../shared/elgin';
+import type { ElginCommand, ElginRealtime, ElginSnapshot } from '../shared/elgin';
 
 const modeLabels: Record<string, string> = { cold: 'Resfriar', hot: 'Aquecer', wet: 'Secar', wind: 'Ventilar', auto: 'Auto' };
 const modeIcons: Record<string, LucideIcon> = { cold: Snowflake, hot: Flame, wet: Droplets, wind: Wind, auto: Sparkles };
 // Modos em que o setpoint faz sentido (o mesmo recorte que o app da Tuya usa).
 const temperatureModes = ['cold', 'hot', 'auto'];
+const realtimeLabels: Record<ElginRealtime, string> = { connecting: 'conectando tempo real…', on: 'tempo real ativo', blocked: 'tempo real indisponível' };
 
-export default function LiveElginPanel({ snapshot: s, configure }: { snapshot: ElginSnapshot; configure: () => void }) {
+export default function LiveElginPanel({ snapshot: s, configure, guide }: { snapshot: ElginSnapshot; configure: () => void; guide: () => void }) {
   const [failure, setFailure] = useState('');
   const elgin = window.glacialpoint!.elgin;
   const run = (action: () => Promise<unknown>) => { setFailure(''); void action().catch(() => setFailure('Não foi possível acessar a conexão. Tente novamente.')); };
@@ -20,8 +21,9 @@ export default function LiveElginPanel({ snapshot: s, configure }: { snapshot: E
   const temperatureMax = caps?.temperature ? Math.min(caps.temperature.max, 30) : null;
   const canAdjustTemperature = !!state?.power && temperatureModes.includes(state?.mode ?? '');
   return <div className="live-lg live-elgin">
-    {!s.connected ? <div className="lg-welcome"><Snowflake size={36}/><h2>Seu Elgin, no ponto.</h2><p>Conecte seu projeto Tuya Cloud para controlar o ar-condicionado de qualquer lugar.</p><button className="lg-button primary" onClick={configure}>{s.busy ? 'Conexão em andamento…' : 'Configurar Elgin Smart'}</button></div> : <>
-      <div className="device-tabs" role="group" aria-label="Aparelhos conectados">{s.devices.map(d => <button key={d.id} disabled={s.busy} aria-pressed={d.id === s.selectedId} onClick={() => run(() => elgin.select(d.id))}>{d.name}</button>)}</div>
+    {!s.connected ? <div className="lg-welcome"><Snowflake size={36}/><h2>Seu Elgin, no ponto.</h2><p>Conecte seu projeto Tuya Cloud para controlar o ar-condicionado de qualquer lugar.</p><div className="welcome-actions"><button className="lg-button primary" onClick={configure}>{s.busy ? 'Conexão em andamento…' : 'Configurar Elgin Smart'}</button><button className="lg-button" onClick={guide}>Como conectar</button></div></div> : <>
+      {/* Com um único aparelho o nome já aparece no cabeçalho; o seletor só é exibido quando há mais de um. */}
+      {s.devices.length > 1 && <div className="device-tabs" role="group" aria-label="Aparelhos conectados">{s.devices.map(d => <button key={d.id} disabled={s.busy} aria-pressed={d.id === s.selectedId} onClick={() => run(() => elgin.select(d.id))}>{d.name}</button>)}</div>}
       <div className={`controls ${state?.power ? 'powered' : ''}`}>
         <div className="device-heading"><div><span className="section-label">Elgin Smart · {device?.model}</span><h2>{device?.name}</h2></div>{caps?.power && <button className={`power-button ${state?.power ? 'on' : ''}`} disabled={blocked || state?.power == null} aria-label={state?.power ? 'Desligar aparelho' : 'Ligar aparelho'} aria-pressed={state?.power ?? false} onClick={() => command({ field: 'power', value: !state?.power })}><Power size={22}/></button>}</div>
         {state && caps ? <>
@@ -40,7 +42,7 @@ export default function LiveElginPanel({ snapshot: s, configure }: { snapshot: E
           </fieldset>
           <div className="ambient"><span>Ambiente <strong>{state.current ?? '—'}°</strong></span><span>{s.error ? 'Leitura anterior' : 'Dados da Elgin'}</span></div>
         </> : <p className="settings-footnote">{s.busy ? 'Consultando aparelho…' : 'Atualize para consultar o estado do aparelho.'}</p>}
-        <div className="lg-refresh"><span>{s.updatedAt ? `Última leitura ${new Date(s.updatedAt).toLocaleTimeString('pt-BR')}` : 'Sem leitura'}{s.busy ? ' · Atualizando…' : ''}</span><button className="lg-button" disabled={s.busy} onClick={() => run(() => elgin.refresh())}>Atualizar</button></div>
+        <div className="lg-refresh"><span title={s.realtime === 'blocked' ? 'O serviço de mensagens da Tuya não está habilitado para este projeto; o painel atualiza por consulta periódica.' : undefined}>{s.updatedAt ? `Última leitura ${new Date(s.updatedAt).toLocaleTimeString('pt-BR')}` : 'Sem leitura'}{s.busy ? ' · Atualizando…' : ''}{s.realtime ? ` · ${realtimeLabels[s.realtime]}` : ''}</span><button className="lg-button" disabled={s.busy} onClick={() => run(() => elgin.refresh())}>Atualizar</button></div>
       </div>
     </>}
     {s.notice && !s.busy && <p className="lg-notice" role="status">{s.notice}</p>}

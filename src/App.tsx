@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ChartNoAxesColumn, Check, CircleHelp, Droplets, Fan, Leaf, Minus, Moon, Plus, Power, SlidersHorizontal, Snowflake, Sparkles, Sun, Waves, Wind, X } from 'lucide-react';
+import ConnectionGuide from './ConnectionGuide';
 import EnergyPanel from './EnergyPanel';
 import EnergySettings from './EnergySettings';
 import ElginConnection from './ElginConnection';
@@ -22,9 +23,12 @@ const speedLabels: Record<FanSpeed, string> = { auto: 'Auto', low: 'Baixa', medi
 
 export default function App() {
   const [state, setState] = useState<DeviceState>(initialDemoState);
-  const [page, setPage] = useState<'control' | 'settings' | 'energy' | 'tariff'>('control');
+  const [page, setPage] = useState<'control' | 'settings' | 'energy' | 'tariff' | 'guide'>('control');
   const [tariffReturn, setTariffReturn] = useState<'settings' | 'energy'>('energy');
   const configureTariff = (from: 'settings' | 'energy') => { setTariffReturn(from); setPage('tariff'); };
+  const [guideService, setGuideService] = useState<'lg' | 'elgin'>('lg');
+  const [guideReturn, setGuideReturn] = useState<'control' | 'settings'>('settings');
+  const openGuide = (service: 'lg' | 'elgin', from: 'control' | 'settings') => { setGuideService(service); setGuideReturn(from); setPage('guide'); };
   const [light, setLight] = useState(false);
   const [solid, setSolid] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -45,6 +49,9 @@ export default function App() {
   const activeConnected = active === 'lg' ? lg.connected : elgin.connected;
   const activeBusy = active === 'lg' ? lg.busy : elgin.busy;
   const activeNotice = active === 'lg' ? lg.notice : elgin.notice;
+  const activeSelectedId = active === 'lg' ? lg.selectedId : elgin.selectedId;
+  const activeDeviceName = (active === 'lg' ? lg.devices : elgin.devices).find(device => device.id === activeSelectedId)?.name;
+  const activeDevices = active === 'lg' ? lg.devices : elgin.devices;
   useEffect(() => {
     const bridge = window.glacialpoint?.lg;
     if (!bridge) return;
@@ -73,9 +80,9 @@ export default function App() {
     <main className="stage">
       {!desktop && <div className="intro"><span className="eyebrow">UM RESPIRO NO SEU DIA</span><h1>O seu clima.<br/>No seu controle.</h1><p>Um lugar tranquilo para encontrar<br/>a temperatura perfeita.</p><div className="intro-line"/><span className="intro-note">Inspirado na leveza. Feito para o seu desktop.</span></div>}
       <section className="panel" aria-label="Painel GlacialPoint">
-        <header className="panel-header" inert={desktop && activeBusy && !!activeNotice}><div className="flex items-center gap-2"><Snowflake size={19}/><span>GlacialPoint</span></div><div className="flex gap-1">{desktop && (active === 'lg' || page === 'energy') && <button className="icon-button" aria-label={page === 'energy' ? 'Voltar aos controles' : 'Abrir consumo'} onClick={() => setPage(page === 'energy' ? 'control' : 'energy')}><ChartNoAxesColumn size={17}/></button>}<button className="icon-button" aria-label={light ? 'Ativar tema escuro' : 'Ativar tema claro'} onClick={() => setLight(!light)}>{light ? <Moon size={17}/> : <Sun size={17}/>}</button><button className="icon-button" aria-label={page === 'settings' ? 'Voltar aos controles' : 'Abrir configurações'} onClick={() => setPage(page === 'settings' ? 'control' : 'settings')}>{page === 'settings' ? <X size={17}/> : <SlidersHorizontal size={17}/>}</button></div></header>
+        <header className="panel-header" inert={desktop && activeBusy && !!activeNotice}><div className="flex items-center gap-2"><Snowflake size={19}/><span>GlacialPoint</span></div><div className="flex gap-1">{desktop && (activeConnected || page === 'energy') && <button className="icon-button" aria-label={page === 'energy' ? 'Voltar aos controles' : 'Abrir consumo'} onClick={() => setPage(page === 'energy' ? 'control' : 'energy')}><ChartNoAxesColumn size={17}/></button>}<button className="icon-button" aria-label={light ? 'Ativar tema escuro' : 'Ativar tema claro'} onClick={() => setLight(!light)}>{light ? <Moon size={17}/> : <Sun size={17}/>}</button><button className="icon-button" aria-label={page === 'settings' ? 'Voltar aos controles' : 'Abrir configurações'} onClick={() => setPage(page === 'settings' ? 'control' : 'settings')}>{page === 'settings' ? <X size={17}/> : <SlidersHorizontal size={17}/>}</button></div></header>
         <div className="demo-banner"><span className="demo-dot"/>{desktop ? active === 'lg' ? 'LG ThinQ' : 'Elgin Smart' : 'Demonstração'}<span>{desktop ? activeConnected ? 'Conta conectada' : 'Configure sua conta' : 'Sem conexão com aparelhos'}</span></div>
-        {page === 'energy' && desktop ? <EnergyPanel key={lg.selectedId ?? 'none'} deviceId={lg.connected ? lg.selectedId : null} deviceName={lg.devices.find(d => d.id === lg.selectedId)?.name} back={() => setPage('control')} tariffSettings={() => configureTariff('energy')}/> : page === 'tariff' && desktop ? <EnergySettings back={() => setPage(tariffReturn)}/> : page === 'settings' ? <div className="settings-content">
+        {page === 'guide' ? <ConnectionGuide service={guideService} back={() => setPage(guideReturn)} configure={() => setPage('settings')}/> : page === 'energy' && desktop ? <EnergyPanel key={`${active}:${activeSelectedId ?? 'none'}`} provider={active} deviceId={activeConnected ? activeSelectedId : null} deviceName={activeDeviceName} back={() => setPage('control')} tariffSettings={() => configureTariff('energy')} integrations={lg.connected && elgin.connected ? { active, select: chooseProvider } : null} devices={activeDevices.length > 1 ? { list: activeDevices, selectedId: activeSelectedId, select: id => { const bridge = window.glacialpoint; void (active === 'lg' ? bridge!.lg.select(id) : bridge!.elgin.select(id)).catch(() => { /* o painel segue no aparelho atual */ }); } } : null}/> : page === 'tariff' && desktop ? <EnergySettings back={() => setPage(tariffReturn)}/> : page === 'settings' ? <div className="settings-content">
           <button className="back-link" onClick={() => setPage('control')}><ArrowLeft size={15}/>Voltar</button>
           <h2>Do seu jeito.</h2><p className="muted settings-description">Ajustes simples para um clima melhor.</p>
           <h3 className="section-label">APARÊNCIA</h3>
@@ -83,13 +90,13 @@ export default function App() {
           <Setting label="Reduzir transparência" detail="Um fundo sólido para facilitar a leitura" checked={solid} onChange={() => setSolid(!solid)}/>
           <Setting label="Reduzir movimento" detail="Desativar as animações decorativas" checked={reducedMotion} onChange={() => setReducedMotion(!reducedMotion)}/>
           <h3 className="section-label mt-7!">ENERGIA</h3>{desktop && <button className="lg-button" onClick={() => configureTariff('settings')}>Configurar tarifa de energia</button>}<h3 className="section-label mt-7!">INTEGRAÇÕES</h3>
-          <LGConnection snapshot={lg}/>
-          <ElginConnection snapshot={elgin} onConnected={() => chooseProvider('elgin')}/>
+          <LGConnection snapshot={lg} guide={() => openGuide('lg', 'settings')}/>
+          <ElginConnection snapshot={elgin} onConnected={() => chooseProvider('elgin')} guide={() => openGuide('elgin', 'settings')}/>
           <IntegrationSuggestion />
           <p className="settings-footnote">As preferências de aparência duram até fechar o aplicativo.</p>
         </div> : desktop ? <>
           {lg.connected && elgin.connected && <div className="device-tabs provider-tabs" role="group" aria-label="Integrações conectadas"><button aria-pressed={active === 'lg'} onClick={() => chooseProvider('lg')}>LG ThinQ</button><button aria-pressed={active === 'elgin'} onClick={() => chooseProvider('elgin')}>Elgin Smart</button></div>}
-          {active === 'lg' ? <LiveLGPanel snapshot={lg} configure={() => setPage('settings')}/> : <LiveElginPanel snapshot={elgin} configure={() => setPage('settings')}/>}
+          {active === 'lg' ? <LiveLGPanel snapshot={lg} configure={() => setPage('settings')} guide={() => openGuide('lg', 'control')}/> : <LiveElginPanel snapshot={elgin} configure={() => setPage('settings')} guide={() => openGuide('elgin', 'control')}/>}
         </> : <>
           <div className="device-tabs" role="group" aria-label="Aparelhos da demonstração"><button aria-pressed="true"><span className="device-led selected"/>{demoDevice.name}</button></div>
           <div className={`controls ${state.power ? 'powered' : ''}`}>

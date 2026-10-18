@@ -8,6 +8,6 @@ await build({
   format: 'cjs',
   outdir: 'dist-electron',
   outExtension: { '.js': '.cjs' },
-  external: ['electron'],
+  external: ['electron', 'bufferutil', 'utf-8-validate'],
   sourcemap: true,
 });

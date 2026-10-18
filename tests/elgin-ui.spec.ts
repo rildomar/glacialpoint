@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { emptyElgin } from '../shared/elgin';
 import { emptyLG } from '../shared/lg';
+import { energyPeriods } from '../shared/energy';
 
 test('conexão Elgin limpa credenciais e controla só o que o aparelho anuncia', async ({ page }) => {
   await page.setViewportSize({ width: 364, height: 800 });
@@ -62,6 +63,7 @@ test('conexão Elgin limpa credenciais e controla só o que o aparelho anuncia',
 
   await page.getByRole('button', { name: 'Voltar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ar - escritório' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Aparelhos conectados' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Eco' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Luz' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Trava' })).toHaveCount(0);
@@ -128,6 +130,7 @@ test('duas integrações conectadas alternam entre LG e Elgin e lembram a escolh
   await expect(page.getByRole('heading', { name: 'LG da sala' })).toBeVisible();
   const tabs = page.getByRole('group', { name: 'Integrações conectadas' });
   await expect(tabs.getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('group', { name: 'Aparelhos conectados' })).toHaveCount(0);
   await tabs.getByRole('button', { name: 'Elgin Smart', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ar - escritório' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Eco', exact: true })).toBeVisible();
@@ -179,4 +182,159 @@ test('conectar o Elgin com o LG ativo leva direto ao painel Elgin', async ({ pag
   await page.getByRole('button', { name: 'Voltar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ar - escritório' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Integrações conectadas' })).toBeVisible();
+});
+
+test('consumo estimado do Elgin deixa claro que o aparelho não mede energia', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  const elgin = { ...emptyElgin, connected: true,
+    devices: [{ id: 'elgin-escritorio', name: 'Ar - escritório', model: 'Elgin Eco Inverter' }], selectedId: 'elgin-escritorio',
+    state: { power: true, mode: 'cold', current: 27, target: 24, eco: false, sleep: false, light: true, lock: false, swingHorizontal: false },
+    capabilities: { power: true, temperature: { min: 16, max: 90, step: 1, scale: 1 }, modes: ['cold'], swingHorizontal: true, eco: true, sleep: true, light: true, lock: true },
+    updatedAt: Date.now() };
+  await page.addInitScript(({ lg, elgin, dates }) => {
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      energySettings: { read: async () => ({ tariff: 0.9, averagePower: 0.7 }), save: async settings => settings },
+      lg: {
+        snapshot: async () => lg, subscribe: () => () => {}, connect: async () => lg, disconnect: async () => lg,
+        select: async () => lg, refresh: async () => lg, command: async () => lg, openTokenPage: async () => {}, energy: async () => ({}),
+      },
+      elgin: {
+        snapshot: async () => elgin, subscribe: () => () => {}, connect: async () => elgin, disconnect: async () => elgin,
+        select: async () => elgin, refresh: async () => elgin, command: async () => elgin,
+        energy: async id => ({ deviceId: id, daily: dates.daily.map((date, i) => ({ date, kwh: i === 29 ? 0.4 : null })), monthly: dates.monthly.map((date, i) => ({ date, kwh: i === 5 ? 2.1 : null })), supported: true, updatedAt: Date.now(), error: null, source: 'estimate' }),
+      },
+    };
+  }, { lg: emptyLG, elgin, dates: energyPeriods() });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Abrir consumo' }).click();
+  await expect(page.getByRole('heading', { name: 'Seu consumo.' })).toBeVisible();
+  await expect(page.getByText('ESTIMATIVA', { exact: true })).toBeVisible();
+  await expect(page.locator('.energy-value')).toContainText('2,1');
+  await expect(page.locator('.energy-estimate strong')).toContainText('1,89');
+  await expect(page.getByText(/não mede energia/)).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Integrações conectadas' })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Aparelhos conectados' })).toHaveCount(0);
+  await page.screenshot({ path: 'artifacts/elgin-energy-test.png' });
+});
+
+test('Elgin com dois aparelhos mostra o seletor e troca o ativo', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  const elgin = { ...emptyElgin, connected: true,
+    devices: [
+      { id: 'elgin-escritorio', name: 'Ar - escritório', model: 'Elgin Eco Inverter' },
+      { id: 'elgin-sala', name: 'Ar da sala', model: 'Elgin Eco Inverter' },
+    ], selectedId: 'elgin-escritorio',
+    state: { power: true, mode: 'cold', current: 27, target: 24, eco: false, sleep: false, light: true, lock: false, swingHorizontal: false },
+    capabilities: { power: true, temperature: { min: 16, max: 90, step: 1, scale: 1 }, modes: ['cold'], swingHorizontal: true, eco: true, sleep: true, light: true, lock: true },
+    updatedAt: Date.now() };
+  await page.addInitScript(({ lg, initial }) => {
+    let snapshot = initial;
+    const listeners = new Set<(value: typeof initial) => void>();
+    const publish = () => { listeners.forEach(fn => fn(structuredClone(snapshot))); return Promise.resolve(snapshot); };
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      lg: {
+        snapshot: async () => lg, subscribe: () => () => {}, connect: async () => lg, disconnect: async () => lg,
+        select: async () => lg, refresh: async () => lg, command: async () => lg, openTokenPage: async () => {}, energy: async () => ({}),
+      },
+      elgin: {
+        snapshot: async () => snapshot,
+        subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+        connect: async () => snapshot, disconnect: async () => snapshot,
+        select: async id => { snapshot = { ...snapshot, selectedId: id }; return publish(); },
+        refresh: async () => snapshot, command: async () => snapshot,
+      },
+    };
+  }, { lg: emptyLG, initial: elgin });
+  await page.goto('/');
+  const tabs = page.getByRole('group', { name: 'Aparelhos conectados' });
+  await expect(tabs.getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('heading', { name: 'Ar - escritório' })).toBeVisible();
+  await tabs.getByRole('button', { name: 'Ar da sala' }).click();
+  await expect(page.getByRole('heading', { name: 'Ar da sala' })).toBeVisible();
+  await expect(tabs.getByRole('button', { name: 'Ar da sala' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('consumo troca de integração direto na tela de análise', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  const lg = { ...emptyLG, connected: true,
+    devices: [{ id: 'lg-sala', name: 'LG da sala', model: 'Teste' }], selectedId: 'lg-sala',
+    state: { power: true, target: 23, current: 26, mode: 'COOL', fan: 'AUTO', swing: null, eco: null, sleepHours: null },
+    capabilities: { power: true, temperature: { min: 18, max: 30, step: 1 }, modes: ['COOL'], fanSpeeds: [], swing: false, eco: false, sleep: false },
+    updatedAt: Date.now() };
+  const elgin = { ...emptyElgin, connected: true,
+    devices: [{ id: 'elgin-escritorio', name: 'Ar - escritório', model: 'Elgin Eco Inverter' }], selectedId: 'elgin-escritorio',
+    state: { power: true, mode: 'cold', current: 27, target: 24, eco: false, sleep: false, light: true, lock: false, swingHorizontal: false },
+    capabilities: { power: true, temperature: { min: 16, max: 90, step: 1, scale: 1 }, modes: ['cold'], swingHorizontal: true, eco: true, sleep: true, light: true, lock: true },
+    updatedAt: Date.now() };
+  await page.addInitScript(({ lg, elgin, dates }) => {
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      energySettings: { read: async () => ({ tariff: 0.9, averagePower: 0.7 }), save: async settings => settings },
+      lg: {
+        snapshot: async () => lg, subscribe: () => () => {}, connect: async () => lg, disconnect: async () => lg,
+        select: async () => lg, refresh: async () => lg, command: async () => lg, openTokenPage: async () => {},
+        energy: async id => ({ deviceId: id, daily: dates.daily.map((date, i) => ({ date, kwh: i === 29 ? 1.25 : null })), monthly: dates.monthly.map((date, i) => ({ date, kwh: i === 5 ? 42.5 : null })), supported: true, updatedAt: Date.now(), error: null, source: 'cloud' }),
+      },
+      elgin: {
+        snapshot: async () => elgin, subscribe: () => () => {}, connect: async () => elgin, disconnect: async () => elgin,
+        select: async () => elgin, refresh: async () => elgin, command: async () => elgin,
+        energy: async id => ({ deviceId: id, daily: dates.daily.map((date, i) => ({ date, kwh: i === 29 ? 0.4 : null })), monthly: dates.monthly.map((date, i) => ({ date, kwh: i === 5 ? 2.1 : null })), supported: true, updatedAt: Date.now(), error: null, source: 'estimate' }),
+      },
+    };
+  }, { lg, elgin, dates: energyPeriods() });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Abrir consumo' }).click();
+  await expect(page.locator('.energy-device')).toHaveText('LG da sala');
+  await expect(page.locator('.energy-value')).toContainText('42,5');
+  const tabs = page.getByRole('group', { name: 'Integrações conectadas' });
+  await expect(tabs.getByRole('button')).toHaveCount(2);
+  await tabs.getByRole('button', { name: 'Elgin Smart', exact: true }).click();
+  await expect(page.locator('.energy-device')).toHaveText('Ar - escritório');
+  await expect(page.getByText('ESTIMATIVA', { exact: true })).toBeVisible();
+  await expect(page.locator('.energy-value')).toContainText('2,1');
+  await expect(tabs.getByRole('button', { name: 'Elgin Smart', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.energy-content .back-link').click();
+  await expect(page.getByRole('heading', { name: 'Ar - escritório' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Integrações conectadas' }).getByRole('button', { name: 'Elgin Smart', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('tutorial do Elgin abre do painel e leva às configurações', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  await page.addInitScript(({ lg, initial }) => {
+    localStorage.setItem('glacialpoint.provider', 'elgin');
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      lg: {
+        snapshot: async () => lg, subscribe: () => () => {}, connect: async () => lg, disconnect: async () => lg,
+        select: async () => lg, refresh: async () => lg, command: async () => lg, openTokenPage: async () => {}, energy: async () => ({}),
+      },
+      elgin: {
+        snapshot: async () => initial, subscribe: () => () => {}, connect: async () => initial, disconnect: async () => initial,
+        select: async () => initial, refresh: async () => initial, command: async () => initial,
+        openConsolePage: async () => { (window as unknown as { __consoleOpened: boolean }).__consoleOpened = true; },
+      },
+    };
+  }, { lg: emptyLG, initial: emptyElgin });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Seu Elgin, no ponto.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Como conectar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Como conectar seu Elgin.' })).toBeVisible();
+  await expect(page.getByText(/Vincule sua conta Smart Life/)).toBeVisible();
+  await page.getByText(/Ative os serviços do projeto/).evaluate(e => e.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(1600);
+  await page.screenshot({ path: 'artifacts/elgin-guide-services.png' });
+  await page.getByText(/Vincule sua conta Smart Life/).evaluate(e => e.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(1600);
+  await page.screenshot({ path: 'artifacts/elgin-guide-qr.png' });
+  await page.getByRole('button', { name: 'Abrir Tuya IoT ↗' }).click();
+  expect(await page.evaluate(() => (window as unknown as { __consoleOpened?: boolean }).__consoleOpened)).toBe(true);
+  await page.getByRole('button', { name: 'Configurar Elgin Smart', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Do seu jeito.' })).toBeVisible();
+  await page.getByRole('region', { name: 'Conexão Elgin Smart' }).getByRole('button', { name: 'Passo a passo de conexão' }).click();
+  await expect(page.getByRole('heading', { name: 'Como conectar seu Elgin.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Do seu jeito.' })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/elgin-guide.png' });
 });

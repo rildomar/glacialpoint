@@ -43,8 +43,12 @@ Compilar e testar em Mac, adequar menu bar, foco, posicionamento, Keychain, mate
 
 Identificar modelo exato e app/conta usados. Investigar integração documentada ou outra via tecnicamente verificável. Não assumir Tuya ou qualquer protocolo apenas pelo nome Elgin Smart. Documentar suporte e limitações antes de implementar. Adicionar adaptador com os mesmos contratos, mas capacidades e autenticação próprias.
 
-Investigação concluída em 2026-10-17 (`docs/ELGIN.md`): plataforma Tuya; caminho B (reparear no Smart Life e vincular a conta ao projeto) com leitura e controle validados ao vivo. Núcleo implementado: contratos em `shared/elgin.ts`, cliente/sessão em `electron/core/elgin-client.ts` e `elgin-session.ts`, credencial no `safeStorage` (`elgin-credential.bin`), fixtures anonimizadas e 14 testes (`npm run test:elgin`). Interface implementada em `ElginConnection.tsx`/`LiveElginPanel.tsx`, com abas LG/Elgin quando as duas contas estão conectadas e 3 testes de UI. Pendente: validação de um comando real pelo aplicativo e confirmação da faixa prática de temperatura.
+Investigação concluída em 2026-10-17 (`docs/ELGIN.md`): plataforma Tuya; caminho B (reparear no Smart Life e vincular a conta ao projeto) com leitura e controle validados ao vivo. Núcleo implementado: contratos em `shared/elgin.ts`, cliente/sessão e push em tempo real em `electron/core/elgin-client.ts`, `elgin-session.ts` e `elgin-push.ts`, estimativa de consumo em `elgin-energy.ts`/`elgin-usage-store.ts`, credencial no `safeStorage` (`elgin-credential.bin`), fixtures anonimizadas e 31 testes (`npm run test:elgin`). Interface implementada em `ElginConnection.tsx`/`LiveElginPanel.tsx`, com abas LG/Elgin quando as duas contas estão conectadas, seletor de aparelhos e de integração no consumo, tutoriais de conexão no app e 7 casos de UI. Pendente: validação de um comando real pelo aplicativo e confirmação da faixa prática de temperatura.
 
 ## Próxima sessão
 
-Validar um comando real do Elgin pelo aplicativo (conectar em Configurações e enviar luz ou liga/desliga), confirmando o efeito físico e a leitura de volta. Revisar a bandeja em diferentes monitores. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.
+Validar no macOS (marco E): compilar e rodar no Mac, com foco em bandeja/menu bar, foco, posicionamento do painel (arrasto e posição lembrada) e Keychain. Validar um comando real do Elgin pelo aplicativo (efeito físico e leitura de volta) e confirmar a faixa prática de temperatura. Revisar a bandeja em diferentes monitores no Windows. Definir destino para pedidos de integração antes de habilitar envio; por enquanto, apenas rascunho local.
+
+## Para depois
+
+- Projeções de consumo: registro diário no aplicativo para projetar o mês e comparar com a fatura da concessionária, que cobra por média quando não há coleta no mês. Ideia do usuário (2026-10-17); fica para uma conversa futura.

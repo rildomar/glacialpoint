@@ -1,10 +1,13 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, powerMonitor, screen, session, shell, Tray, type IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { defaultAveragePower } from '../shared/energy';
 import { listIntegrations } from './core/integrations';
 import { ElginSession } from './core/elgin-session';
 import { LGSession } from './core/lg-session';
 import { credentialStore, elginCredentialStore } from './credential-store';
+import { usageStore } from './elgin-usage-store';
+import { panelPositionStore } from './panel-position-store';
 import { tariffStore } from './tariff-store';
 
 const isDev = !app.isPackaged && process.argv.includes('--dev');
@@ -16,6 +19,9 @@ let panel: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let quitting = false;
 let blurTimer: ReturnType<typeof setTimeout> | undefined;
+let positionTimer: ReturnType<typeof setTimeout> | undefined;
+let positions: ReturnType<typeof panelPositionStore> | null = null;
+let appliedPosition: { x: number; y: number } | null = null;
 let lg: LGSession;
 let elgin: ElginSession;
 
@@ -24,16 +30,35 @@ function clearBlurTimer() {
   blurTimer = undefined;
 }
 
+const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(value, maximum));
+
+// O arrasto do usuário chega como evento 'move' sem passar pelo showPanel;
+// espera a poeira baixar e guarda a posição, ignorando os reposicionamentos
+// do próprio aplicativo (mesmos valores aplicados por último).
+function rememberPosition() {
+  clearTimeout(positionTimer);
+  positionTimer = setTimeout(() => {
+    if (!panel || panel.isDestroyed()) return;
+    const { x, y } = panel.getBounds();
+    if (appliedPosition && x === appliedPosition.x && y === appliedPosition.y) return;
+    appliedPosition = { x, y };
+    positions?.write({ x, y });
+  }, 400);
+}
+
 function showPanel() {
   if (!panel || panel.isDestroyed() || !tray) return;
   clearBlurTimer();
   const anchor = tray.getBounds();
-  const work = screen.getDisplayNearestPoint({ x: anchor.x, y: anchor.y }).workArea;
+  // A posição arrastada pelo usuário tem prioridade; sem ela, o painel abre junto à bandeja.
+  const saved = positions?.read() ?? null;
+  const work = screen.getDisplayNearestPoint(saved ?? { x: anchor.x, y: anchor.y }).workArea;
   const width = Math.min(364, work.width);
   const height = Math.min(800, work.height - 16);
-  const x = Math.round(Math.max(work.x, Math.min(anchor.x + anchor.width / 2 - width / 2, work.x + work.width - width)));
+  const x = Math.round(saved ? clamp(saved.x, work.x, work.x + work.width - width) : Math.max(work.x, Math.min(anchor.x + anchor.width / 2 - width / 2, work.x + work.width - width)));
   const above = anchor.y > work.y + work.height / 2;
-  const y = Math.round(Math.max(work.y, Math.min(above ? anchor.y - height - 8 : anchor.y + anchor.height + 8, work.y + work.height - height)));
+  const y = Math.round(saved ? clamp(saved.y, work.y, work.y + work.height - height) : Math.max(work.y, Math.min(above ? anchor.y - height - 8 : anchor.y + anchor.height + 8, work.y + work.height - height)));
+  appliedPosition = { x, y };
   panel.setBounds({ x, y, width, height });
   panel.show();
   panel.focus();
@@ -69,6 +94,7 @@ function createPanel() {
     blurTimer = setTimeout(() => panel?.hide(), 150);
   });
   panel.on('focus', clearBlurTimer);
+  panel.on('move', rememberPosition);
   panel.on('show', () => { lg.setVisible(true); elgin.setVisible(true); });
   panel.on('hide', () => { lg.setVisible(false); elgin.setVisible(false); });
   panel.once('ready-to-show', showPanel);
@@ -105,7 +131,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', showPanel);
   app.on('activate', showPanel);
-  app.on('before-quit', () => { quitting = true; clearBlurTimer(); lg?.dispose(); elgin?.dispose(); tray?.destroy(); });
+  app.on('before-quit', () => { quitting = true; clearBlurTimer(); clearTimeout(positionTimer); lg?.dispose(); elgin?.dispose(); tray?.destroy(); });
   app.on('window-all-closed', () => { /* Keep the tray application running. */ });
   app.whenReady().then(() => {
     app.setAppUserModelId('com.rildomar.glacialpoint');
@@ -120,14 +146,16 @@ if (!app.requestSingleInstanceLock()) {
     lg = new LGSession(credentialStore(app.getPath('userData')), snapshot => {
       if (panel && !panel.isDestroyed()) panel.webContents.send('lg:changed', snapshot);
     });
+    // makeClient/settle/makePush usam os padrões de produção; o último argumento
+    // é o acumulado diário da estimativa de consumo do Elgin.
     elgin = new ElginSession(elginCredentialStore(app.getPath('userData')), snapshot => {
       if (panel && !panel.isDestroyed()) panel.webContents.send('elgin:changed', snapshot);
-    });
+    }, undefined, undefined, undefined, usageStore(app.getPath('userData')));
     ipcMain.handle('integrations:list', event => { trusted(event); return listIntegrations(); });
     ipcMain.handle('lg:snapshot', event => { trusted(event); return lg.get(); });
     const tariffs = tariffStore(app.getPath('userData'));
     ipcMain.handle('energy:settings', event => { trusted(event); return tariffs.read(); });
-    ipcMain.handle('energy:save-tariff', (event, value: unknown) => { trusted(event); return tariffs.write(value); });
+    ipcMain.handle('energy:save-settings', (event, value: unknown) => { trusted(event); return tariffs.write(value); });
     ipcMain.handle('lg:energy', (event, id: unknown) => { trusted(event); return lg.energy(id); });
     ipcMain.handle('lg:connect', (event, token: unknown) => { trusted(event); return lg.connect(token); });
     ipcMain.handle('lg:disconnect', event => { trusted(event); return lg.disconnect(); });
@@ -141,9 +169,17 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('elgin:select', (event, id: unknown) => { trusted(event); return elgin.select(id); });
     ipcMain.handle('elgin:refresh', event => { trusted(event); return elgin.refresh(); });
     ipcMain.handle('elgin:command', (event, id: unknown, command: unknown) => { trusted(event); return elgin.command(id, command); });
+    ipcMain.handle('elgin:console-page', event => { trusted(event); return shell.openExternal('https://iot.tuya.com/'); });
+    ipcMain.handle('elgin:energy', (event, id: unknown) => {
+      trusted(event);
+      let averagePower = defaultAveragePower;
+      try { averagePower = tariffs.read().averagePower ?? defaultAveragePower; } catch { /* energia corrompida não bloqueia a estimativa */ }
+      return elgin.energy(id, averagePower);
+    });
     powerMonitor.on('suspend', () => { lg.suspend(); elgin.suspend(); });
     powerMonitor.on('resume', () => { lg.resume(); elgin.resume(); });
     createTray();
+    positions = panelPositionStore(app.getPath('userData'));
     createPanel();
     void lg.restore();
     void elgin.restore();

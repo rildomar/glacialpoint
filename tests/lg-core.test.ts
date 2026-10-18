@@ -5,7 +5,7 @@ import stateFixture from './fixtures/lg-state.json';
 import { capabilities, commandPayload, LGClient, parseState, parseEnergy, type LGTransport } from '../electron/core/lg-client';
 import { energyPeriods } from '../shared/energy';
 import { tariffStore } from '../electron/tariff-store';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { LGSession, type Credentials } from '../electron/core/lg-session';
@@ -22,14 +22,19 @@ test('energy calendar uses São Paulo dates and crosses years; missing readings 
   assert.deepEqual(parseEnergy({ resultCode: '0000', result: { dataList: [{ usedDate: '20261015', energyUsage: 6249 }, { usedDate: '20261014', energyUsage: 0 }] } }, ['20261013','20261014','20261015']), [{ date: '20261013', kwh: null }, { date: '20261014', kwh: 0 }, { date: '20261015', kwh: 6.249 }]);
   assert.throws(() => parseEnergy({ resultCode: '2201' }, []));
 });
-test('tariff persists across store instances, supports zero and rejects invalid values', () => {
+test('energy settings persist across store instances, support zero and reject invalid values', () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'gp-tariff-'));
   try {
-    const store = tariffStore(directory); assert.equal(store.read().tariff, null);
-    store.write(.95); assert.equal(tariffStore(directory).read().tariff, .95);
-    for (const value of [-1, NaN, Infinity, '0.95', 1001]) assert.throws(() => store.write(value));
-    store.write(0); assert.equal(store.read().tariff, 0);
-    store.write(null); assert.equal(store.read().tariff, null);
+    const store = tariffStore(directory); assert.deepEqual(store.read(), { tariff: null, averagePower: null });
+    store.write({ tariff: .95, averagePower: .7 }); assert.deepEqual(tariffStore(directory).read(), { tariff: .95, averagePower: .7 });
+    for (const value of [-1, NaN, Infinity, '0.95', 1001]) assert.throws(() => store.write({ tariff: value, averagePower: null }));
+    for (const value of [-0.1, 0.01, 11, '0.7', NaN]) assert.throws(() => store.write({ tariff: null, averagePower: value }));
+    for (const value of [null, 'nonsense', 0.95, []]) assert.throws(() => store.write(value));
+    store.write({ tariff: 0, averagePower: null }); assert.deepEqual(store.read(), { tariff: 0, averagePower: null });
+    store.write({ tariff: null, averagePower: null }); assert.deepEqual(store.read(), { tariff: null, averagePower: null });
+    // Arquivo antigo (só tarifa) continua legível.
+    writeFileSync(path.join(directory, 'energy-settings.json'), JSON.stringify({ tariff: 0.80477 }), 'utf8');
+    assert.deepEqual(store.read(), { tariff: 0.80477, averagePower: null });
   } finally { rmSync(directory, { recursive: true }); }
 });
 test('energy client uses energy endpoints and normalizes returned Wh', async () => {

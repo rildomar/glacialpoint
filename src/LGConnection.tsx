@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import { CircleHelp } from 'lucide-react';
 import type { LGSnapshot } from '../shared/lg';
 
-export default function LGConnection({ snapshot }: { snapshot: LGSnapshot }) {
+export default function LGConnection({ snapshot, guide }: { snapshot: LGSnapshot; guide?: () => void }) {
   const [token, setToken] = useState('');
   const [failure, setFailure] = useState('');
   const lg = window.glacialpoint?.lg;
   const run = (action: () => Promise<unknown>) => { setFailure(''); void action().catch(() => setFailure('Não foi possível acessar a conexão. Tente novamente.')); };
   return <section className="lg-connection" aria-label="Conexão LG ThinQ">
     <div className="integration-row"><span className="provider-logo">LG</span><div><strong>LG ThinQ</strong><span>{snapshot.connected ? `${snapshot.devices.length} aparelho(s) · Brasil` : 'Conecte sua conta · Brasil'}</span></div></div>
+    {lg && guide && <button className="guide-link" onClick={guide}><CircleHelp size={12}/>Passo a passo de conexão</button>}
     {!lg ? <p className="settings-footnote">Abra a versão desktop para conectar sua conta. Esta página é uma demonstração.</p> : snapshot.connected ? <>
       <p className="settings-footnote">Token protegido pelo Windows. Sua conta será reconectada ao abrir o aplicativo.</p>
       <button className="lg-button" onClick={() => run(() => lg.disconnect())}>Desconectar conta</button>

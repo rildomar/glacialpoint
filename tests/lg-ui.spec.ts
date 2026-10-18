@@ -75,3 +75,63 @@ test('long device details and errors stay inside the native content scroller', a
   await page.getByRole('alert').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'artifacts/lg-long-content.png' });
 });
+
+test('tutorial da LG abre do painel, do formulário e volta para onde estava', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  await page.addInitScript(initial => {
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      lg: {
+        snapshot: async () => initial, subscribe: () => () => {}, connect: async () => initial, disconnect: async () => initial,
+        select: async () => initial, refresh: async () => initial, command: async () => initial, energy: async () => ({}),
+        openTokenPage: async () => { (window as unknown as { __portalOpened: boolean }).__portalOpened = true; },
+      },
+    };
+  }, emptyLG);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Como conectar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Como conectar seu LG.' })).toBeVisible();
+  await expect(page.getByText(/ADD NEW TOKEN/)).toBeVisible();
+  await page.getByText(/Entre na sua conta/).evaluate(e => e.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(1600);
+  await page.screenshot({ path: 'artifacts/lg-guide-qr.png' });
+  await page.getByText(/Crie e copie o token/).evaluate(e => e.scrollIntoView({ block: 'center' }));
+  await page.screenshot({ path: 'artifacts/lg-guide-token.png' });
+  await page.getByRole('button', { name: 'Abrir portal de tokens da LG ↗' }).click();
+  expect(await page.evaluate(() => (window as unknown as { __portalOpened?: boolean }).__portalOpened)).toBe(true);
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Seu LG, por perto.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Como conectar', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurar LG ThinQ', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Do seu jeito.' })).toBeVisible();
+  await page.getByRole('region', { name: 'Conexão LG ThinQ' }).getByRole('button', { name: 'Passo a passo de conexão' }).click();
+  await expect(page.getByRole('heading', { name: 'Como conectar seu LG.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Do seu jeito.' })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/lg-guide.png' });
+});
+
+test('cabeçalho vira o puxador da janela no desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 364, height: 800 });
+  await page.addInitScript(initial => {
+    window.glacialpoint = {
+      isDesktop: true, listIntegrations: async () => [],
+      lg: {
+        snapshot: async () => initial, subscribe: () => () => {}, connect: async () => initial, disconnect: async () => initial,
+        select: async () => initial, refresh: async () => initial, command: async () => initial, energy: async () => ({}),
+        openTokenPage: async () => {},
+      },
+    };
+  }, emptyLG);
+  await page.goto('/');
+  const regions = await page.evaluate(() => {
+    const read = (element: Element) => {
+      const style = getComputedStyle(element);
+      return (style.getPropertyValue('-webkit-app-region') || style.getPropertyValue('app-region')).trim();
+    };
+    const header = document.querySelector('.panel-header');
+    const button = header?.querySelector('button');
+    return header && button ? { header: read(header), button: read(button) } : null;
+  });
+  expect(regions).toEqual({ header: 'drag', button: 'no-drag' });
+});
