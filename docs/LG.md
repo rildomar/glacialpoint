@@ -1,8 +1,16 @@
 # Integração LG ThinQ — conexão e token
 
-Estado: **conexão validada em 2026-10-17**, incluindo conta criada via Google (rota do QR com a câmera do celular, abaixo). Este documento é a base do passo a passo dentro do aplicativo (Configurações → LG ThinQ → "Passo a passo de conexão").
+Estado: **conexão validada em 2026-10-17** (conta criada via Google — rota do QR com a câmera do celular, abaixo) e em uso com a conta do usuário. Este documento é a base do passo a passo dentro do aplicativo (Configurações → LG ThinQ → "Passo a passo de conexão").
 
 O GlacialPoint fala direto com a API oficial da LG (região Brasil) usando um **token pessoal** da própria conta ThinQ. O token substitui a senha: o aplicativo nunca pede nem guarda a senha da LG.
+
+## O que o aplicativo faz com o token
+
+- Lista os ar-condicionados da conta e mostra um por vez — com seletor quando há mais de um (a escolha fica lembrada).
+- Lê o perfil do modelo e monta os controles **só com o que o aparelho anuncia**: ligar/desligar, modos (resfriar, secar, ventilar, auto), temperatura alvo, velocidades de ventilação, oscilação, Eco e temporizador/sono. Capacidades variam por modelo.
+- Envia um comando por vez, **sem alteração otimista**; depois do envio, uma leitura confirma o novo estado. Falha pede atualização antes de tentar de novo.
+- Mantém o estado atualizado por consultas: 20 s com o painel visível, 5 min oculto ou após erro; pausam durante a suspensão do computador. O botão Atualizar força uma consulta na hora.
+- Consulta o **histórico de energia** do ThinQ (30 dias completos mais seis meses, incluindo o atual, no calendário de America/Sao_Paulo) para a tela de consumo. Valores em Wh viram kWh; ausências ficam como "sem leitura".
 
 ## Pré-requisitos
 
@@ -59,9 +67,15 @@ Contas sociais não têm senha LG para digitar no portal; o login por senha não
 - No GlacialPoint ele fica apenas no processo principal, protegido pelo sistema; a interface não guarda o token.
 - Esse armazenamento não protege contra outros programas executados sob a mesma conta do Windows (mesma ressalva do README).
 
+## Testes
+
+- `npm run test:lg` — 11 casos de núcleo (node): validação do token, descoberta de aparelhos, perfil/estado, montagem de comandos, energia e tarifa.
+- `npm run test:e2e` — casos de interface cobrindo o formulário de token, os controles conforme a capacidade anunciada e a alternância entre integrações.
+- `npm run test:desktop` — ponte nativa e armazenamento seguro no Electron compilado.
+
 ## Notas internas (implementação)
 
-- Botão do aplicativo abre `https://connect-pat.lgthinq.com/` (IPC `lg:token-page`).
-- Cliente fala com `https://api-aic.lgthinq.com/` com `x-country: BR` e `x-client-id` do ThinQ; o token precisa começar com `thinqpat_` (validado antes de salvar).
-- Credencial salva via safeStorage em `lg-credential.bin` na pasta de dados; a interface recebe apenas snapshots sem o token.
-- Consultas automáticas: 20 s com o painel visível, 5 min oculto ou após erro; pausam durante a suspensão.
+- Cliente HTTP em `electron/core/lg-client.ts` (fala com `https://api-aic.lgthinq.com/`, cabeçalhos `x-country: BR` e `x-client-id` do ThinQ) e ciclo de sessão em `electron/core/lg-session.ts`.
+- O token precisa começar com `thinqpat_` (validado antes de salvar) e é guardado via safeStorage em `lg-credential.bin`, na pasta de dados do aplicativo; a interface recebe apenas snapshots sem o token.
+- O botão "Abrir portal de tokens da LG" (Configurações e tutorial) abre `https://connect-pat.lgthinq.com/` por IPC (`lg:token-page`).
+- Consultas automáticas: 20 s com o painel visível, 5 min oculto ou após erro; pausam durante a suspensão. Agrupamento de comandos e outras regiões ficam para uma etapa posterior.

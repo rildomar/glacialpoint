@@ -1,6 +1,13 @@
-# Integração Elgin — investigação e plano
+# Integração Elgin Smart (Tuya Cloud) — conexão, investigação e operação
 
-Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17); adaptador de núcleo, push em tempo real, estimativa de consumo e interface (conexão, controle e tutoriais) implementados**. Falta a validação de um comando pelo aplicativo com o aparelho real. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
+Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via OpenAPI validados ao vivo (2026-10-17); adaptador de núcleo, push em tempo real, estimativa de consumo e interface (conexão, controle e tutoriais) implementados e testados**. Falta a validação de um comando pelo aplicativo com o aparelho real e a confirmação da faixa prática de temperatura. O aparelho fica no escritório do usuário, então o requisito é **controle remoto via nuvem** (protocolo local de LAN não atende; pode virar melhoria futura para controle rápido no local).
+
+O que o aplicativo faz hoje com o Elgin:
+
+- Controla liga/desliga, modo, temperatura, swing horizontal, eco, sono, luz e trava — apenas o que o aparelho anuncia (capacidades lidas do projeto Tuya).
+- Recebe mudanças **em tempo real** (~1 s), inclusive as feitas por fora (Smart Life ou controle físico), com o polling como rede de segurança.
+- **Estima o consumo** por tempo ligado (o aparelho não mede energia), com consumo médio configurável.
+- Traz o passo a passo de conexão dentro do próprio aplicativo, e o Elgin participa das abas e da tela de consumo junto do LG.
 
 ## Aparelho do usuário
 
@@ -8,6 +15,23 @@ Marco F do ROADMAP. Estado: **caminho B concluído — leitura e controle via Op
 - Unidade do usuário (etiqueta da unidade interna): **HJFI12C2WG** — "INT HW ECO INV III 12 FR 220V1F R32" (12.000 BTU/h, 220 V, 1 fase, gás R32).
 - App de controle atual: **Elgin Smart** (`com.elgin.smart`).
 - Módulo Wi-Fi da linha III: **TYAUX-J2** (conforme manual oficial da linha).
+
+## Como conectar (do zero)
+
+Os mesmos passos estão ilustrados no aplicativo ("Como conectar" no painel de boas-vindas, ou Configurações → Elgin Smart → Passo a passo de conexão); esta é a versão escrita.
+
+1. **Tenha o ar no aplicativo Smart Life.** O vínculo funciona com contas do Smart Life. Se o ar estiver no app Elgin Smart, repareie o Wi-Fi — com o ar ligado, tecla IONAIR 8× até bipar — e cadastre o aparelho no Smart Life. O controle móvel passa a ser por lá (um aparelho pertence a uma conta por vez).
+2. **Crie um projeto na plataforma Tuya IoT** (<https://iot.tuya.com> — o botão "Abrir Tuya IoT" do tutorial vai direto, IPC `elgin:console-page`): conta de desenvolvedor gratuita e um projeto do tipo **Cloud**, no datacenter da sua conta — no Brasil, **Western America**.
+3. **Ative os serviços do projeto** em Cloud → My Services: **Smart Home Basic Service** (ler e controlar aparelhos) e **Device Status Notification** (atualizações em tempo real no painel).
+4. **Vincule a conta Smart Life** em Devices → Link App Account: adicione a conta e escaneie o QR com o aplicativo Smart Life. O ar deve aparecer na lista do projeto.
+5. **Copie as credenciais** na visão geral do projeto: **Access ID** e **Access Secret**.
+6. **Preencha no GlacialPoint**, em Configurações → Elgin Smart: Access ID, Secret e região (Western America). Tudo fica criptografado neste computador (safeStorage / `elgin-credential.bin`).
+
+Se algo der errado:
+
+- O fluxo de vínculo pelo aplicativo Elgin Smart **não completa** — use o Smart Life.
+- Região errada devolve erro de datacenter (`28841107 — the data center is suspended`): projeto e conta precisam estar no mesmo datacenter.
+- Leitura que para com o tempo: confira cotas e serviços autorizados em Cloud → My Services (o trial tem validade).
 
 ## Evidências sobre o backend
 
